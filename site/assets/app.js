@@ -4,7 +4,7 @@
   var docs = (C.docs || []).slice().sort(function (a, b) { return a.order - b.order; });
   var bySlug = {};
   docs.forEach(function (d) { bySlug[d.slug] = d; });
-  var CATS = ['路线', '基础', '核心', '工程', '上岗', '资料'];
+  var CATS = ['路线', '打底', '核心', '扩展', '上线', '上岗'];
   var app = document.getElementById('app');
 
   function esc(s) {
@@ -49,12 +49,132 @@
       return all;
     });
   }
+  var figSeq = 0;
+  function wrapCn(s, per) {
+    var out = [], cur = '';
+    for (var i = 0; i < s.length; i++) {
+      cur += s.charAt(i);
+      if (cur.length >= per) { out.push(cur); cur = ''; }
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
+  function svgLines(x, y, lines, cls) {
+    return lines.map(function (t, i) {
+      return '<text x="' + x + '" y="' + (y + i * 18) + '" text-anchor="middle" class="' + cls + '">' + esc(t) + '</text>';
+    }).join('');
+  }
+  function figFlow(items, cyclic) {
+    var id = 'fa' + (++figSeq), n = items.length, W = 720, pad = 22, gap = 28;
+    var bw = (W - pad * 2 - gap * (n - 1)) / n, bh = 78, top = 26;
+    var H = top + bh + (cyclic ? 58 : 14);
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="fig-svg" role="img">';
+    s += '<defs><marker id="' + id + '" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" class="fig-arrow"/></marker></defs>';
+    items.forEach(function (it, i) {
+      var x = pad + i * (bw + gap);
+      s += '<rect x="' + x + '" y="' + top + '" width="' + bw + '" height="' + bh + '" rx="11" class="fig-node' + (i === 0 || i === n - 1 ? ' hi' : '') + '"/>';
+      var lines = wrapCn(it, Math.max(3, Math.floor(bw / 15)));
+      s += svgLines(x + bw / 2, top + bh / 2 - (lines.length - 1) * 9 + 6, lines, 'fig-label');
+      if (i < n - 1) {
+        s += '<line x1="' + (x + bw + 3) + '" y1="' + (top + bh / 2) + '" x2="' + (x + bw + gap - 7) + '" y2="' + (top + bh / 2) + '" class="fig-line" marker-end="url(#' + id + ')"/>';
+      }
+    });
+    if (cyclic) {
+      var y2 = top + bh + 34;
+      s += '<path d="M ' + (W - pad - bw / 2) + ' ' + (top + bh) + ' L ' + (W - pad - bw / 2) + ' ' + y2 + ' L ' + (pad + bw / 2) + ' ' + y2 + ' L ' + (pad + bw / 2) + ' ' + (top + bh) + '" class="fig-line fig-back" marker-end="url(#' + id + ')"/>';
+      s += '<text x="' + (W / 2) + '" y="' + (y2 - 8) + '" text-anchor="middle" class="fig-note">结果回流，进入下一轮</text>';
+    }
+    return s + '</svg>';
+  }
+  function figStack(rows) {
+    var W = 720, pad = 22, rowH = 64, gap = 12, top = 16;
+    var H = top + rows.length * (rowH + gap) - gap + 16;
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="fig-svg" role="img">';
+    rows.forEach(function (r, i) {
+      var p = r.split('::'), t = p[0] || '', d = p.slice(1).join('::') || '';
+      var y = top + i * (rowH + gap);
+      s += '<rect x="' + pad + '" y="' + y + '" width="' + (W - pad * 2) + '" height="' + rowH + '" rx="11" class="fig-node' + (i === 0 ? ' hi' : '') + '"/>';
+      s += '<rect x="' + pad + '" y="' + y + '" width="6" height="' + rowH + '" rx="3" class="fig-bar"/>';
+      s += '<text x="' + (pad + 24) + '" y="' + (y + 27) + '" class="fig-title">' + esc(t) + '</text>';
+      var ls = wrapCn(d, 46);
+      ls.slice(0, 2).forEach(function (t2, k) {
+        s += '<text x="' + (pad + 24) + '" y="' + (y + 48 + k * 15) + '" class="fig-sub">' + esc(t2) + '</text>';
+      });
+    });
+    return s + '</svg>';
+  }
+  function figCompare(rows) {
+    var W = 720, pad = 22, gap = 18, bw = (W - pad * 2 - gap) / 2, H = 196;
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="fig-svg" role="img">';
+    rows.slice(0, 2).forEach(function (r, i) {
+      var p = r.split('::'), t = p[0] || '', pts = (p[1] || '').split('|');
+      var x = pad + i * (bw + gap);
+      s += '<rect x="' + x + '" y="16" width="' + bw + '" height="' + (H - 32) + '" rx="13" class="fig-node' + (i === 0 ? ' hi' : '') + '"/>';
+      s += '<text x="' + (x + bw / 2) + '" y="48" text-anchor="middle" class="fig-title">' + esc(t) + '</text>';
+      s += '<line x1="' + (x + 24) + '" y1="62" x2="' + (x + bw - 24) + '" y2="62" class="fig-line"/>';
+      pts.forEach(function (q, k) {
+        var ls = wrapCn(q, 22);
+        ls.slice(0, 2).forEach(function (t2, j) {
+          s += '<text x="' + (x + 24) + '" y="' + (90 + k * 40 + j * 17) + '" class="fig-sub">· ' + esc(t2) + '</text>';
+        });
+      });
+    });
+    return s + '</svg>';
+  }
+  function renderFigure(title, body) {
+    var lines = body.trim().split('\n'), kind = 'flow', data = [];
+    lines.forEach(function (l) {
+      var t = l.trim();
+      if (!t) return;
+      if (t.charAt(0) === '@') { kind = t.slice(1).trim(); return; }
+      data.push(t);
+    });
+    var svg = '';
+    if (kind === 'stack') svg = figStack(data);
+    else if (kind === 'compare') svg = figCompare(data);
+    else svg = figFlow(data[0] ? data.join('|').split('|') : [], kind === 'cycle');
+    return '<figure class="figure"><div class="fig-head"><span class="fig-badge">图</span><span>' + inline(title) + '</span></div><div class="fig-body">' + svg + '</div></figure>';
+  }
+  var BOX = {
+    tip: ['tip', '要点'],
+    warn: ['warn', '注意'],
+    ask: ['ask', '停下来想一想'],
+    quote: ['quote', ''],
+    steps: ['steps', '跟着做'],
+    check: ['check', '自检清单']
+  };
+  function renderBox(kind, title, body) {
+    var cfg = BOX[kind] || BOX.tip;
+    var inner = renderMarkdown(body).html;
+    return '<div class="mdbox mdbox-' + cfg[0] + '">' +
+      (cfg[1] || title ? '<div class="mdbox-head"><span class="mdbox-tag">' + inline(title || cfg[1]) + '</span></div>' : '') +
+      '<div class="mdbox-body">' + inner + '</div></div>';
+  }
+  function renderContainer(raw) {
+    var lines = raw.split('\n');
+    var open = (lines.shift() || '').replace(/^:::\s*/, '').trim();
+    var sp = open.indexOf(' ');
+    var kind = (sp < 0 ? open : open.slice(0, sp)).trim();
+    var title = sp < 0 ? '' : open.slice(sp + 1).trim();
+    var body = lines.join('\n').replace(/\n\s*$/, '');
+    if (kind === 'figure') return renderFigure(title, body);
+    return renderBox(kind, title, body);
+  }
   function renderMarkdown(md) {
     var lines = String(md).replace(/\r\n/g, '\n').split('\n');
     var out = [], heads = [];
     var i = 0;
     while (i < lines.length) {
       var L = lines[i];
+      // custom container :::kind title ... :::
+      if (/^:::\s*\S/.test(L)) {
+        var buf = [];
+        i++;
+        while (i < lines.length && !/^:::\s*$/.test(lines[i])) { buf.push(lines[i]); i++; }
+        i++;
+        out.push(renderContainer([L].concat(buf).join('\n')));
+        continue;
+      }
       // fenced code
       if (/^\s*```/.test(L)) {
         var lang = L.replace(/^\s*```/, '').trim() || 'text';
@@ -137,21 +257,21 @@
   // ---------- icons ----------
   var ICONS = {
     '路线': '<path d="M4 18h6M4 12h10M4 6h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="19" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/>',
-    '基础': '<rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 9h8M8 13h8M8 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    '打底': '<rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 9h8M8 13h8M8 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     '核心': '<circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
-    '工程': '<path d="M4 7h16v10H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 11h3M8 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    '扩展': '<path d="M4 7h16v10H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 11h3M8 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     '上岗': '<path d="M4 20V9l8-5 8 5v11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 20v-6h6v6" fill="none" stroke="currentColor" stroke-width="2"/>',
-    '资料': '<path d="M5 4h11l3 3v13H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 11h8M8 15h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+    '上线': '<path d="M5 4h11l3 3v13H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 11h8M8 15h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
   };
-  function icon(c) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[c] || ICONS['资料']) + '</svg>'; }
+  function icon(c) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[c] || ICONS['上线']) + '</svg>'; }
 
   // ---------- home ----------
   var STAGES = [
-    { no: '01', t: '打底', d: 'LLM 调用、Prompt、结构化输出，先能稳定拿到合法 JSON', time: '约 1 周', to: '11-llm-basics' },
-    { no: '02', t: '核心', d: '手写循环、工具调用、上下文工程，不靠框架跑通闭环', time: '2~3 周', to: '02-agent-loop' },
-    { no: '03', t: '扩展', d: 'RAG、记忆、MCP、框架选型，能接真实数据且可溯源', time: '3~4 周', to: '05-rag-memory' },
-    { no: '04', t: '上线', d: '评测、追踪、护栏、成本、部署，能演示也能回归', time: '2~3 周', to: '08-eval-production' },
-    { no: '05', t: '上岗', d: '岗位画像、追问链、简历口径，15 分钟讲清自己的系统', time: '1~2 周', to: '09-interview' }
+    { no: '01', t: '打底', d: '搞懂模型在干什么，写出带超时、重试、输出契约的调用骨架', time: '第 1~2 周', to: '01-how-llm-works' },
+    { no: '02', t: '核心', d: '纯标准库手写 200 行循环，接上工具、管住上下文预算', time: '第 3~7 周', to: '05-agent-loop' },
+    { no: '03', t: '扩展', d: '检索溯源、记忆系统、看懂框架与工具协议', time: '第 8 周', to: '08-rag' },
+    { no: '04', t: '上线', d: '评测门禁、安全护栏、幂等降级与灰度回滚', time: '第 9 周', to: '11-eval' },
+    { no: '05', t: '上岗', d: '三个简历项目 + 四层追问链，15 分钟讲清系统', time: '第 10 周', to: '14-projects' }
   ];
   function renderHome() {
     var total = docs.length;
@@ -166,25 +286,26 @@
     }).join('');
     return '<div class="home fade">' +
       '<section class="hero"><div class="hero-inner"><div>' +
-        '<div class="eyebrow"><i></i> 免费 · 开源 · 持续更新</div>' +
-        '<h1>从调 API 到<br><em>能上岗</em>的 Agent 开发指南</h1>' +
-        '<p>把 GitHub 高星教程、官方一手文档和社区路线图重新拆一遍，按岗位能力模型整理成 ' + total + ' 篇能照着做、能拿去面试的中文知识库。不是洗稿，是重新组织。</p>' +
-        '<div class="hero-btns"><a class="btn btn-primary" href="#/doc/00-roadmap">开始学习 <svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>' +
-        '<a class="btn btn-ghost" href="#/doc/15-resources">查看资料地图</a></div>' +
+        '<div class="eyebrow"><i></i> 免费 · 原创 · 持续更新</div>' +
+        '<h1>从零手写循环，到<br><em>能上岗</em>的 Agent 开发指南</h1>' +
+        '<p>' + total + ' 篇原创图解长文，每篇把一个概念从「为什么会这样」推到「代码该怎么写」。不堆链接，不列清单，所有示例只用标准库，复制粘贴就能跑。</p>' +
+        '<div class="hero-btns"><a class="btn btn-primary" href="#/doc/00-start-here">开始学习 <svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>' +
+        '<a class="btn btn-ghost" href="#/doc/05-agent-loop">直接看手写循环</a></div>' +
       '</div><div class="hero-terminal"><div class="term-bar"><i></i><i></i><i></i><span>agent_loop.py</span></div>' +
       '<div class="term-body"><span class="k">def</span> <span class="f">run</span>(goal, tools, budget):\n  state = <span class="f">State</span>(goal)\n  <span class="k">while</span> <span class="k">True</span>:\n    <span class="c"># 1 组装上下文</span>\n    msg = <span class="f">build_messages</span>(state)\n    <span class="c"># 2 模型决策</span>\n    d = llm.<span class="f">call</span>(msg, tools)\n    <span class="k">if</span> d.is_final: <span class="k">return</span> d.answer\n    <span class="k">if</span> state.rounds &gt;= budget.max:\n      <span class="k">return</span> <span class="f">fallback</span>(<span class="s">"超出预算"</span>)\n    <span class="c"># 3 执行 + 4 记录轨迹</span>\n    obs = tools.<span class="f">execute</span>(d.name, d.args)\n    state.trace.<span class="f">append</span>(obs)\n    state.rounds += <span class="n">1</span></div></div></div></section>' +
-      '<div class="stats"><div class="stat"><b>' + total + ' 篇</b><span>系统梳理的原创文档</span></div><div class="stat"><b>5 阶段</b><span>每阶段都有验收点</span></div><div class="stat"><b>3 项目</b><span>带工程约束的简历项目</span></div><div class="stat"><b>持续更新</b><span>框架与岗位情报同步</span></div></div>' +
-      '<section class="section"><div class="section-head"><div class="section-kicker">Roadmap</div><h2>五阶段路线：按「能交付什么」切分</h2><p>网上大部分路线图按知识点排列，学完「RAG 是什么」并不会让你通过面试。每一阶段都设了验收点，达不到就别往下走。</p></div><div class="roadmap-grid">' + stageHtml + '</div></section>' +
-      '<section class="section"><div class="section-head"><div class="section-kicker">Knowledge base</div><h2>按模块浏览</h2><p>每篇都以「验收点 + 面试追问链 + 一手资料出处」收尾，方便自查与核验。</p></div><div class="cat-grid">' + catHtml + '</div></section>' +
-      '<section class="section"><div class="section-head"><div class="section-kicker">Why different</div><h2>和现有资料有什么不一样</h2><p>框架官方文档按 API 组织，通用教程停在 Demo，八股站教你背题。我们按岗位能力模型组织，讲「出问题怎么办」。</p></div>' +
-      '<table class="compare"><thead><tr><th>维度</th><th>框架文档</th><th>通用教程</th><th>面试八股</th><th class="us">AgentOffer</th></tr></thead><tbody>' +
-      '<tr><td>组织方式</td><td>按 API</td><td>按知识点</td><td>按题目</td><td class="us">岗位能力模型 + 五阶段</td></tr>' +
-      '<tr><td>内容深度</td><td>说明</td><td>概念</td><td>问答</td><td class="us">可运行代码 + 故障注入 + 评测口径</td></tr>' +
-      '<tr><td>出处核验</td><td>—</td><td>多为转述</td><td>—</td><td class="us">每篇附一手资料原始链接</td></tr>' +
-      '<tr><td>停止在</td><td>能跑</td><td>能跑</td><td>能背</td><td class="us">能上线、能答辩、能复盘</td></tr>' +
-      '<tr><td>岗位情报</td><td>无</td><td>无</td><td>少量</td><td class="us">JD 拆解 + 追问链 + 笔试情报</td></tr>' +
+      '<div class="stats"><div class="stat"><b>' + total + ' 篇</b><span>原创长文，不是链接清单</span></div><div class="stat"><b>50+ 张</b><span>自绘示意图</span></div><div class="stat"><b>零依赖</b><span>代码复制即可运行</span></div><div class="stat"><b>3 项目</b><span>能写进简历并答到第四层</span></div></div>' +
+      '<section class="section"><div class="section-head"><div class="section-kicker">Roadmap</div><h2>五阶段路线：按「能交出什么」切分</h2><p>收藏夹里的路线图按知识点排，学完「检索增强是什么」并不会让你通过面试。这里按产物排，每一阶段都设了验收点，达不到就别往下走。</p></div><div class="roadmap-grid">' + stageHtml + '</div></section>' +
+      '<section class="section"><div class="section-head"><div class="section-kicker">Knowledge base</div><h2>按模块浏览</h2><p>每篇都是「提问 → 破误解 → 图解 → 层层追问 → 可运行代码 → 自检 → 小结」，读完一篇就少一个困惑。</p></div><div class="cat-grid">' + catHtml + '</div></section>' +
+      '<section class="section"><div class="section-head"><div class="section-kicker">How we write</div><h2>这份教程是怎么写的</h2><p>目标读者是完全没做过 Agent、想转行的人。所以每一篇都从「为什么会发生」讲起，而不是先甩一个概念。</p></div>' +
+      '<table class="compare"><thead><tr><th>维度</th><th>知识点清单</th><th>提纲式教程</th><th class="us">AgentOffer</th></tr></thead><tbody>' +
+      '<tr><td>内容形态</td><td>链接与目录</td><td>概念与表格</td><td class="us">原创正文 + 自绘示意图</td></tr>' +
+      '<tr><td>代码</td><td>无</td><td>零散片段</td><td class="us">完整可运行，零第三方依赖</td></tr>' +
+      '<tr><td>讲解方式</td><td>给结论</td><td>给结论</td><td class="us">从机制推导到工程取舍</td></tr>' +
+      '<tr><td>失败与坑</td><td>不提</td><td>很少提</td><td class="us">每篇都有踩坑与边界</td></tr>' +
+      '<tr><td>适合谁</td><td>已入门</td><td>已入门</td><td class="us">零基础转行</td></tr>' +
+      '<tr><td>收尾</td><td>—</td><td>无</td><td class="us">自检清单 + 三句话小结</td></tr>' +
       '</tbody></table></section>' +
-      '<div class="cta"><div><h2>资料包目录已公开，完整版回复关键词领取</h2><p>系统教程 PDF 打包、按公司分类的笔面情报与网申时间线、北森 / 智鼎 / 牛客等笔试平台的题型与规则差异、面经追问链合集。仓库里的<a href="#/doc/15-resources">一手资料地图</a>就是目录。</p><span class="cta-key">公众号回复：Agent</span></div><div class="cta-side"><a class="btn btn-primary" href="#/doc/15-resources">查看资料目录</a><div style="font-size:12px;color:var(--text-3)">1v1 咨询：微信 offer630</div></div></div>' +
+      '<div class="cta"><div><h2>笔面情报与资料包，回复关键词领取</h2><p>按公司 / 岗位分类的笔面情报与网申时间线、主流笔试平台题型与规则差异、面经追问链合集与项目讲法模板。教程本身全部免费公开，这里只是额外的求职资料。</p><span class="cta-key">公众号回复：Agent</span></div><div class="cta-side"><a class="btn btn-primary" href="#/doc/00-start-here">从第 00 篇开始</a><div style="font-size:12px;color:var(--text-3)">1v1 咨询：微信 offer630</div></div></div>' +
       '</div>';
   }
 
@@ -198,7 +319,7 @@
       }).join('') + '</div>';
     }).join('');
     return '<aside class="sidebar" id="sidebar">' + groups +
-      '<div class="side-foot">17 篇文档 · 一份源同时驱动 GitHub 与本站<br><a href="https://github.com/bimianwangzhe/agent-offer" target="_blank" rel="noopener">在 GitHub 上查看 →</a></div></aside>';
+      '<div class="side-foot">16 篇原创文档 · 一份源同时驱动 GitHub 与本站<br><a href="https://github.com/bimianwangzhe/agent-offer" target="_blank" rel="noopener">在 GitHub 上查看 →</a></div></aside>';
   }
   function renderDoc(d) {
     var r = renderMarkdown(d.md);
@@ -235,9 +356,11 @@
       app.innerHTML = renderHome();
       document.title = 'AgentOffer · Agent 开发岗上岸指南';
     }
+    var NAV_SLUG = { roadmap: '00-start-here', core: '05-agent-loop',
+                     launch: '11-eval', career: '15-interview' };
     document.querySelectorAll('.nav a').forEach(function (a) {
       var key = a.getAttribute('data-nav');
-      a.classList.toggle('active', key === 'home' ? !d : (d && d.slug.indexOf(key === 'roadmap' ? 'roadmap' : key === 'interview' ? 'interview' : key === 'resources' ? 'resources' : 'benchmark') === 0));
+      a.classList.toggle('active', key === 'home' ? !d : (d && d.slug === NAV_SLUG[key]));
     });
     updateProgress();
   }

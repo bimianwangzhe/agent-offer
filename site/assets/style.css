@@ -190,6 +190,50 @@ html:not([data-theme="dark"]) .ico-moon{display:none}
 .md blockquote p{margin:0}
 .md blockquote p+p{margin-top:10px}
 .md code{font-family:var(--mono);font-size:.875em;background:var(--bg-tint);color:var(--accent-strong);padding:2px 6px;border-radius:5px;border:1px solid var(--border)}
+
+/* ---- 自绘插图 ---- */
+.figure{margin:30px 0 34px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface-2);box-shadow:var(--shadow)}
+.fig-head{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600;color:var(--text-2);background:var(--bg-tint)}
+.fig-badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;background:var(--accent);color:#fff;font-size:11px;font-weight:700;flex:none}
+.fig-body{padding:18px 16px 14px;overflow-x:auto}
+.fig-svg{display:block;width:100%;min-width:520px;height:auto}
+.fig-node{fill:var(--surface);stroke:var(--border-2);stroke-width:1.5}
+.fig-node.hi{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+.fig-bar{fill:var(--accent)}
+.fig-line{stroke:var(--accent);stroke-width:2;fill:none}
+.fig-back{stroke-dasharray:5 5;stroke:var(--text-3)}
+.fig-arrow{fill:var(--accent)}
+.fig-label{fill:var(--text);font-size:14px;font-weight:600;font-family:var(--font)}
+.fig-title{fill:var(--text);font-size:15px;font-weight:680;font-family:var(--font)}
+.fig-sub{fill:var(--text-2);font-size:12.5px;font-family:var(--font)}
+.fig-note{fill:var(--text-3);font-size:12px;font-family:var(--font)}
+
+/* ---- 讲解块 ---- */
+.mdbox{margin:26px 0;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);overflow:hidden}
+.mdbox-head{padding:9px 16px;border-bottom:1px solid var(--border);background:var(--bg-tint)}
+.mdbox-tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.4px;color:var(--accent-strong)}
+.mdbox-body{padding:14px 18px 4px;font-size:14.5px;line-height:1.85;color:var(--text-2)}
+.mdbox-body p:last-child{margin-bottom:12px}
+.mdbox-body ul,.mdbox-body ol{margin:0 0 12px;padding-left:22px}
+.mdbox-body li{margin:4px 0}
+.mdbox-body strong{color:var(--text)}
+.mdbox-body .codeblock{margin:12px 0 14px}
+.mdbox-warn{border-color:var(--amber);background:var(--amber-soft)}
+.mdbox-warn .mdbox-head{background:rgba(231,149,44,.13);border-bottom-color:rgba(231,149,44,.3)}
+.mdbox-warn .mdbox-tag{color:var(--amber)}
+.mdbox-ask{border-color:var(--accent-line);background:var(--accent-soft)}
+.mdbox-ask .mdbox-head{background:transparent;border-bottom:1px dashed var(--accent-line)}
+.mdbox-quote{border:0;border-left:4px solid var(--accent);background:var(--bg-tint);border-radius:0 10px 10px 0}
+.mdbox-quote .mdbox-body{padding:16px 20px;font-size:16.5px;line-height:1.8;color:var(--text);font-weight:560}
+.mdbox-quote .mdbox-body p{margin:0 0 8px}
+.mdbox-quote .mdbox-body p:last-child{margin:0}
+.mdbox-check .mdbox-body ul{list-style:none;padding-left:2px}
+.mdbox-check .mdbox-body li{position:relative;padding-left:26px;margin:8px 0}
+.mdbox-check .mdbox-body li::before{content:"";position:absolute;left:2px;top:8px;width:13px;height:13px;border:1.6px solid var(--accent);border-radius:4px}
+.mdbox-steps{counter-reset:step}
+.mdbox-steps .mdbox-body ol{counter-reset:step;list-style:none;padding-left:0}
+.mdbox-steps .mdbox-body ol li{counter-increment:step;position:relative;padding-left:40px;margin:14px 0}
+.mdbox-steps .mdbox-body ol li::before{content:counter(step);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:8px;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .md .md-table-wrap{overflow-x:auto;margin:22px 0;border:1px solid var(--border);border-radius:var(--radius-sm)}
 .md table{border-collapse:collapse;width:100%;font-size:13.5px;background:var(--surface)}
 .md th,.md td{padding:11px 15px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}

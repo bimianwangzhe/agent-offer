@@ -1,6 +1,13 @@
 node_modules/
 .preview-*
 .tmp_*
+.tmp_code/
 *.log
 .DS_Store
 Thumbs.db
+# 示例代码运行产物
+checkpoint.json
+idem.json
+idem_store.json
+run_trace.jsonl
+trace_log.jsonl
