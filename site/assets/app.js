@@ -4,7 +4,7 @@
   var docs = (C.docs || []).slice().sort(function (a, b) { return a.order - b.order; });
   var bySlug = {};
   docs.forEach(function (d) { bySlug[d.slug] = d; });
-  var CATS = ['路线', '打底', '核心', '扩展', '上线', '上岗'];
+  var CATS = ['大模型与调用', 'Agent 原理', '工具与上下文', '检索、记忆与框架', '评测与可靠性', '项目与面试'];
   var app = document.getElementById('app');
 
   function esc(s) {
@@ -256,22 +256,23 @@
 
   // ---------- icons ----------
   var ICONS = {
-    '路线': '<path d="M4 18h6M4 12h10M4 6h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="19" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="2"/>',
-    '打底': '<rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 9h8M8 13h8M8 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
-    '核心': '<circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
-    '扩展': '<path d="M4 7h16v10H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 11h3M8 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
-    '上岗': '<path d="M4 20V9l8-5 8 5v11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 20v-6h6v6" fill="none" stroke="currentColor" stroke-width="2"/>',
-    '上线': '<path d="M5 4h11l3 3v13H5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 11h8M8 15h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+    '大模型与调用': '<path d="M7 8h10M7 12h7M7 16h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="17.5" cy="12" r="1.6" fill="currentColor"/>',
+    'Agent 原理': '<circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    '工具与上下文': '<path d="M14 6a4 4 0 0 0-5.2 5.2L4 16v4h4l4.8-4.8A4 4 0 0 0 18 10l-3 3-2-2 3-3a4 4 0 0 0-2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    '检索、记忆与框架': '<circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 10.5h5M10.5 8v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    '评测与可靠性': '<path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6l-8-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    '项目与面试': '<path d="M4 7h16v12H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 7V5h6v2M4 12h16M9 15h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
   };
-  function icon(c) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[c] || ICONS['上线']) + '</svg>'; }
+  function icon(c) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[c] || ICONS['大模型与调用']) + '</svg>'; }
 
   // ---------- home ----------
   var STAGES = [
-    { no: '01', t: '打底', d: '搞懂模型在干什么，写出带超时、重试、输出契约的调用骨架', time: '第 1~2 周', to: '01-how-llm-works' },
-    { no: '02', t: '核心', d: '纯标准库手写 200 行循环，接上工具、管住上下文预算', time: '第 3~7 周', to: '05-agent-loop' },
-    { no: '03', t: '扩展', d: '检索溯源、记忆系统、看懂框架与工具协议', time: '第 8 周', to: '08-rag' },
-    { no: '04', t: '上线', d: '评测门禁、安全护栏、幂等降级与灰度回滚', time: '第 9 周', to: '11-eval' },
-    { no: '05', t: '上岗', d: '三个简历项目 + 四层追问链，15 分钟讲清系统', time: '第 10 周', to: '14-projects' }
+    { no: '01', t: '模型与调用', d: 'Token 与幻觉、请求五块、超时退避、输出三层契约', time: '4 篇 · 第 1~2 周', to: '01-how-llm-works' },
+    { no: '02', t: 'Agent 循环', d: '唯一判据、循环状态、四个终止条件、错误回传、检查点', time: '2 篇 · 第 3~5 周', to: '04-what-is-agent' },
+    { no: '03', t: '工具与上下文', d: '工具 Schema、权限矩阵、幂等键、上下文预算与压缩', time: '2 篇 · 第 6~7 周', to: '06-tool-calling' },
+    { no: '04', t: '检索、记忆与框架', d: '切分与双路检索、溯源拒答、三层记忆、框架六大件', time: '3 篇 · 第 8~9 周', to: '08-rag' },
+    { no: '05', t: '评测与可靠性', d: '用例集、性质断言、回归门禁、注入防护、幂等降级', time: '3 篇 · 第 9~10 周', to: '11-eval' },
+    { no: '06', t: '项目与表达', d: '三个项目的约束与权衡、数字口径、四层追问链', time: '2 篇 · 第 10 周', to: '14-projects' }
   ];
   function renderHome() {
     var total = docs.length;
@@ -287,15 +288,15 @@
     return '<div class="home fade">' +
       '<section class="hero"><div class="hero-inner"><div>' +
         '<div class="eyebrow"><i></i> 免费 · 原创 · 持续更新</div>' +
-        '<h1>从零手写循环，到<br><em>能上岗</em>的 Agent 开发指南</h1>' +
-        '<p>' + total + ' 篇原创图解长文，每篇把一个概念从「为什么会这样」推到「代码该怎么写」。不堆链接，不列清单，所有示例只用标准库，复制粘贴就能跑。</p>' +
-        '<div class="hero-btns"><a class="btn btn-primary" href="#/doc/00-start-here">开始学习 <svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>' +
+        '<h1>从零基础到<br><em>能独立交付</em>的<br>Agent 开发指南</h1>' +
+        '<p>按小白的认知顺序，把要掌握的知识点一层层排好：' + total + ' 篇原创图解长文，每篇从「为什么会这样」推到「代码该怎么写」。所有示例只用标准库，复制粘贴就能跑。</p>' +
+        '<div class="hero-btns"><a class="btn btn-primary" href="#/doc/00-start-here">看完整学习路线 <svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>' +
         '<a class="btn btn-ghost" href="#/doc/05-agent-loop">直接看手写循环</a></div>' +
       '</div><div class="hero-terminal"><div class="term-bar"><i></i><i></i><i></i><span>agent_loop.py</span></div>' +
       '<div class="term-body"><span class="k">def</span> <span class="f">run</span>(goal, tools, budget):\n  state = <span class="f">State</span>(goal)\n  <span class="k">while</span> <span class="k">True</span>:\n    <span class="c"># 1 组装上下文</span>\n    msg = <span class="f">build_messages</span>(state)\n    <span class="c"># 2 模型决策</span>\n    d = llm.<span class="f">call</span>(msg, tools)\n    <span class="k">if</span> d.is_final: <span class="k">return</span> d.answer\n    <span class="k">if</span> state.rounds &gt;= budget.max:\n      <span class="k">return</span> <span class="f">fallback</span>(<span class="s">"超出预算"</span>)\n    <span class="c"># 3 执行 + 4 记录轨迹</span>\n    obs = tools.<span class="f">execute</span>(d.name, d.args)\n    state.trace.<span class="f">append</span>(obs)\n    state.rounds += <span class="n">1</span></div></div></div></section>' +
       '<div class="stats"><div class="stat"><b>' + total + ' 篇</b><span>原创长文，不是链接清单</span></div><div class="stat"><b>50+ 张</b><span>自绘示意图</span></div><div class="stat"><b>零依赖</b><span>代码复制即可运行</span></div><div class="stat"><b>3 项目</b><span>能写进简历并答到第四层</span></div></div>' +
-      '<section class="section"><div class="section-head"><div class="section-kicker">Roadmap</div><h2>五阶段路线：按「能交出什么」切分</h2><p>收藏夹里的路线图按知识点排，学完「检索增强是什么」并不会让你通过面试。这里按产物排，每一阶段都设了验收点，达不到就别往下走。</p></div><div class="roadmap-grid">' + stageHtml + '</div></section>' +
-      '<section class="section"><div class="section-head"><div class="section-kicker">Knowledge base</div><h2>按模块浏览</h2><p>每篇都是「提问 → 破误解 → 图解 → 层层追问 → 可运行代码 → 自检 → 小结」，读完一篇就少一个困惑。</p></div><div class="cat-grid">' + catHtml + '</div></section>' +
+      '<section class="section"><div class="section-head"><div class="section-kicker">Roadmap</div><h2>从不会到会：六层知识点，一层层往上踩</h2><p>不是贴「入门 / 进阶 / 实战」的标签，而是按依赖关系排知识点：后一层一定要用到前一层。点开任意一层，就是那几篇完整正文。</p></div><div class="roadmap-grid">' + stageHtml + '</div></section>' +
+      '<section class="section"><div class="section-head"><div class="section-kicker">Knowledge base</div><h2>按知识点域浏览全部 16 篇</h2><p>每篇都是「提问 → 破误解 → 图解 → 层层追问 → 可运行代码 → 自检 → 小结」，读完一篇就少一个困惑。</p></div><div class="cat-grid">' + catHtml + '</div></section>' +
       '<section class="section"><div class="section-head"><div class="section-kicker">How we write</div><h2>这份教程是怎么写的</h2><p>目标读者是完全没做过 Agent、想转行的人。所以每一篇都从「为什么会发生」讲起，而不是先甩一个概念。</p></div>' +
       '<table class="compare"><thead><tr><th>维度</th><th>知识点清单</th><th>提纲式教程</th><th class="us">AgentOffer</th></tr></thead><tbody>' +
       '<tr><td>内容形态</td><td>链接与目录</td><td>概念与表格</td><td class="us">原创正文 + 自绘示意图</td></tr>' +
@@ -305,7 +306,7 @@
       '<tr><td>适合谁</td><td>已入门</td><td>已入门</td><td class="us">零基础转行</td></tr>' +
       '<tr><td>收尾</td><td>—</td><td>无</td><td class="us">自检清单 + 三句话小结</td></tr>' +
       '</tbody></table></section>' +
-      '<div class="cta"><div><h2>笔面情报与资料包，回复关键词领取</h2><p>按公司 / 岗位分类的笔面情报与网申时间线、主流笔试平台题型与规则差异、面经追问链合集与项目讲法模板。教程本身全部免费公开，这里只是额外的求职资料。</p><span class="cta-key">公众号回复：Agent</span></div><div class="cta-side"><a class="btn btn-primary" href="#/doc/00-start-here">从第 00 篇开始</a><div style="font-size:12px;color:var(--text-3)">1v1 咨询：微信 offer630</div></div></div>' +
+      '<div class="cta"><div><h2>笔面情报与资料包，回复关键词领取</h2><p>按公司 / 岗位分类的笔面情报与网申时间线、主流笔试平台题型与规则差异、面经追问链合集与项目讲法模板。教程本身全部免费公开，这里只是额外的求职资料。</p><span class="cta-key">公众号回复：Agent</span></div><div class="cta-side"><a class="btn btn-primary" href="#/doc/00-start-here">从学习路线开始</a><div style="font-size:12px;color:var(--text-3)">1v1 咨询：微信 offer630</div></div></div>' +
       '</div>';
   }
 
@@ -319,7 +320,7 @@
       }).join('') + '</div>';
     }).join('');
     return '<aside class="sidebar" id="sidebar">' + groups +
-      '<div class="side-foot">16 篇原创文档 · 一份源同时驱动 GitHub 与本站<br><a href="https://github.com/bimianwangzhe/agent-offer" target="_blank" rel="noopener">在 GitHub 上查看 →</a></div></aside>';
+      '<div class="side-foot">16 篇原创正文 · 一份源同时驱动 GitHub 与本站<br><a href="https://github.com/bimianwangzhe/agent-offer" target="_blank" rel="noopener">在 GitHub 上查看 →</a></div></aside>';
   }
   function renderDoc(d) {
     var r = renderMarkdown(d.md);
@@ -356,8 +357,8 @@
       app.innerHTML = renderHome();
       document.title = 'AgentOffer · Agent 开发岗上岸指南';
     }
-    var NAV_SLUG = { roadmap: '00-start-here', core: '05-agent-loop',
-                     launch: '11-eval', career: '15-interview' };
+    var NAV_SLUG = { roadmap: '00-start-here', loop: '05-agent-loop',
+                     context: '06-tool-calling', career: '14-projects' };
     document.querySelectorAll('.nav a').forEach(function (a) {
       var key = a.getAttribute('data-nav');
       a.classList.toggle('active', key === 'home' ? !d : (d && d.slug === NAV_SLUG[key]));

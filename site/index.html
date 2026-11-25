@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="AgentOffer — Agent 开发岗上岸指南。16 篇原创图解教程，从零手写 Agent 循环到能上线、能答辩，全部代码零依赖可运行。">
-<meta name="keywords" content="Agent 开发,AI Agent,大模型应用开发,学习路线,面试题,工具调用,上下文工程,检索增强,评测,求职">
+<meta name="description" content="AgentOffer — 从零基础到能独立交付的 Agent 开发指南。16 篇原创图解长文，按知识点的依赖关系分六层递进，全部代码零依赖可运行。">
+<meta name="keywords" content="Agent 开发,AI Agent,大模型应用开发,学习路线,知识点清单,工具调用,上下文工程,检索增强,记忆系统,评测,安全护栏,面试题">
 <title>AgentOffer · Agent 开发岗上岸指南</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d9488'/%3E%3Cpath d='M32 12 L48 32 L32 52 L16 32 Z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='32' r='5' fill='white'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<h2 class="sr-only">AgentOffer：Agent 开发岗上岸指南，16 篇原创图解教程，涵盖学习路线、核心原理、工程实践、上线保障与面试上岗。</h2>
+<h2 class="sr-only">AgentOffer：从零基础到能独立交付的 Agent 开发指南，16 篇原创图解长文，按六层知识点递进：模型与调用、Agent 循环、工具与上下文、检索记忆与框架、评测与可靠性、项目与表达。</h2>
 
 <div id="progress" class="progress"><span></span></div>
 
@@ -29,9 +29,9 @@
     <nav class="nav" aria-label="主导航">
       <a href="#/" data-nav="home">首页</a>
       <a href="#/doc/00-start-here" data-nav="roadmap">学习路线</a>
-      <a href="#/doc/05-agent-loop" data-nav="core">核心原理</a>
-      <a href="#/doc/11-eval" data-nav="launch">上线保障</a>
-      <a href="#/doc/15-interview" data-nav="career">面试上岗</a>
+      <a href="#/doc/05-agent-loop" data-nav="loop">Agent 循环</a>
+      <a href="#/doc/06-tool-calling" data-nav="context">工具与上下文</a>
+      <a href="#/doc/14-projects" data-nav="career">项目与表达</a>
     </nav>
 
     <div class="topbar-actions">
@@ -59,25 +59,27 @@
   <div class="footer-inner">
     <div class="footer-brand">
       <div class="footer-logo">Agent<span>Offer</span></div>
-      <p>16 篇原创图解教程，从零手写 Agent 循环，到能上线、能答辩。给内容，不给链接。</p>
+      <p>16 篇原创图解长文，按知识点的依赖关系分六层递进，从「模型在猜什么」一路踩到「能独立交付」。给正文，不给名词清单。</p>
       <p class="footer-domain">线上站点 <a href="https://agent.meetoffer.cn" target="_blank" rel="noopener">agent.meetoffer.cn</a></p>
     </div>
     <div class="footer-col">
-      <h4>开始</h4>
+      <h4>从零开始</h4>
       <a href="#/doc/00-start-here">学习路线</a>
       <a href="#/doc/01-how-llm-works">大模型在干什么</a>
+      <a href="#/doc/02-first-call">第一次调用</a>
       <a href="#/doc/04-what-is-agent">什么是 Agent</a>
-      <a href="#/doc/05-agent-loop">手写 Agent 循环</a>
     </div>
     <div class="footer-col">
-      <h4>进阶</h4>
+      <h4>逐层深入</h4>
+      <a href="#/doc/05-agent-loop">手写 Agent 循环</a>
+      <a href="#/doc/06-tool-calling">工具调用</a>
       <a href="#/doc/07-context">上下文工程</a>
       <a href="#/doc/08-rag">检索增强</a>
-      <a href="#/doc/11-eval">评测与回归</a>
-      <a href="#/doc/13-production">从 Demo 到上线</a>
     </div>
     <div class="footer-col">
-      <h4>上岗</h4>
+      <h4>做成作品</h4>
+      <a href="#/doc/11-eval">评测与回归</a>
+      <a href="#/doc/12-safety">安全与护栏</a>
       <a href="#/doc/14-projects">三个简历项目</a>
       <a href="#/doc/15-interview">面试追问链</a>
       <a href="https://github.com/bimianwangzhe/agent-offer" target="_blank" rel="noopener">GitHub 仓库</a>

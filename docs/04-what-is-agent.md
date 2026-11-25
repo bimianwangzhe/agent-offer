@@ -1,6 +1,6 @@
 ---
 title: 什么是 Agent：一条线划清边界
-category: 核心
+category: Agent 原理
 order: 4
 summary: 判断是不是 Agent 只有一条标准；以及一个更重要的问题——什么时候根本不该用 Agent。
 minutes: 17

@@ -1,6 +1,6 @@
 ---
 title: 手写第一个 Agent 循环
-category: 核心
+category: Agent 原理
 order: 5
 summary: 不用任何框架，从零写一个能跑完整多步任务的 Agent：状态、工具、终止条件、错误回传、幂等、检查点、轨迹回放，全部自己实现。
 minutes: 26

@@ -80,5 +80,5 @@ await api(`/repos/${OWNER}/${REPO}/git/refs/heads/${BRANCH}`, 'PATCH', { sha: co
 const repo = await api(`/repos/${OWNER}/${REPO}`);
 console.log(`done: ${repo.html_url} | commit ${commit.sha.slice(0, 8)} | ${repo.size}KB`);
 
-const dirs = [...new Set(files.map(f => f.includes('/') ? f.split('/')[0] : '')).filter(Boolean)];
+const dirs = [...new Set(files.map(f => f.includes('/') ? f.split('/')[0] : ''))].filter(Boolean);
 console.log('top-level:', dirs.join(', '));
