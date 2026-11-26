@@ -1,7 +1,7 @@
 ---
 title: 从 Demo 到上线：差的不是部署
-category: 评测与可靠性
-order: 13
+category: 生产化与成本
+order: 213
 summary: 本地跑通和敢开给别人用之间，隔着十项显式化：幂等落盘、结构化日志、超时降级、健康检查、指标、灰度与回滚。
 minutes: 22
 ---

@@ -3,6 +3,7 @@
   var C = window.AGENT_CONTENT || { meta: {}, docs: [], layers: [], series: [], picks: [], glossary: [] };
   var docs = (C.docs || []).slice().sort(function (a, b) { return a.order - b.order; });
   var layers = C.layers || [], series = C.series || [], picks = C.picks || [], glossary = C.glossary || [];
+  var goals = C.goals || [], hotRank = C.hotRank || [];
   var meta = C.meta || {};
   var bySlug = {};
   docs.forEach(function (d) { bySlug[d.slug] = d; });
@@ -334,75 +335,113 @@
     return '<div class="cta"><div><h2>笔面情报与资料包，回复关键词领取</h2><p>按公司 / 岗位分类的笔面情报与网申时间线、主流笔试平台题型与规则差异、面经追问链合集与项目讲法模板。教程本身全部免费公开，这里只是额外的求职资料。</p><span class="cta-key">公众号回复：Agent</span></div><div class="cta-side"><a class="btn btn-primary" href="#/roadmap">从学习路线开始</a><div class="cta-note">1v1 咨询：微信 offer630</div></div></div>';
   }
 
-  /* ---------- 首页 ---------- */
+  /* ---------- 首页：按对标站共同结构重排 ---------- */
   function renderHome() {
     var s = '<div class="page fade home">';
-    /* hero：一句话定位 + 数据背书 + 大按钮 */
+    var arrow = '<svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var chev = '<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
+    /* 2. Hero：一句话定位 + 覆盖范围 + 双按钮 + 数据背书 */
     s += '<section class="hero"><div class="hero-inner">' +
       '<div class="hero-copy"><div class="eyebrow"><i></i> 免费 · 原创 · 持续更新</div>' +
       '<h1>从零基础到<br><em>能独立交付</em>的<br>Agent 开发指南</h1>' +
-      '<p class="hero-lead">按小白的认知顺序，把要掌握的知识点一层层排好。' + docs.length + ' 篇原创图解长文，每篇从「为什么会这样」推到「代码该怎么写」；所有示例只用标准库，复制粘贴就能跑。</p>' +
-      '<div class="hero-btns"><a class="btn btn-primary" href="#/roadmap">开始学习 <svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>' +
+      '<p class="hero-lead">把 ' + (meta.pointCount || 0) + ' 个知识点按依赖关系分成 ' + (meta.chapterCount || 0) + ' 组，每一条都单独写成一篇完整正文：从「为什么会这样」推到「代码该怎么写」，配自绘图、可运行代码、踩坑边界与自检清单。示例只用标准库，复制即跑。</p>' +
+      '<div class="hero-btns"><a class="btn btn-primary" href="#/roadmap">开始学习 ' + arrow + '</a>' +
       '<a class="btn btn-ghost" href="#/all">查看全部文章</a></div>' +
-      '<div class="hero-stats"><span><b>' + docs.length + ' 篇</b>原创长文</span><span><b>' + kfmt(meta.totalChars || 0) + '</b>字正文</span><span><b>' + (meta.totalFigures || 0) + ' 张</b>自绘图</span><span><b>零依赖</b>代码可跑</span></div>' +
+      '<div class="hero-stats"><span><b>' + docs.length + ' 篇</b>原创长文</span><span><b>' + kfmt(meta.totalChars || 0) + '</b>字正文</span><span><b>' + (meta.totalFigures || 0) + ' 张</b>自绘图</span><span><b>' + (meta.totalCodes || 0) + ' 段</b>可运行代码</span></div>' +
       '</div>' +
-      '<div class="hero-side"><div class="hero-side-cap">这条线怎么走</div>' +
-      layers.map(function (l) { return '<a class="hero-step" href="#/doc/' + l.entry + '"><span>' + l.no + '</span><b>' + esc(l.name) + '</b><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>'; }).join('') +
+      '<div class="hero-side"><div class="hero-side-cap">三步开始</div>' +
+      '<a class="hero-step" href="#/roadmap"><span>1</span><b>读总纲，看清全部知识点</b>' + chev + '</a>' +
+      '<a class="hero-step" href="#/all"><span>2</span><b>按分组挑一篇读到底</b>' + chev + '</a>' +
+      '<a class="hero-step" href="#/index"><span>3</span><b>用索引查漏，跑一遍代码</b>' + chev + '</a>' +
+      '<div class="hero-side-foot">内容更新至 ' + esc(meta.built || '') + ' · 正文全部免费公开</div>' +
       '</div></div></section>';
 
-    /* 必看系列 */
-    s += '<section class="section">' + sectionHead('必看系列', '从哪里开始，先看这一组', '不知道第一步该敲什么时，按这六个入口走；每一条都直接点开网站上的完整正文。') +
-      '<div class="series-grid">' + series.map(function (x) {
-        return '<a class="series-card" href="#/doc/' + x.to + '"><div class="sc-top"><span class="sc-icon">' + icon(x.icon) + '</span><span class="sc-no">' + x.no + '</span></div><h3>' + esc(x.t) + '</h3><p>' + esc(x.d) + '</p><div class="sc-foot"><span>' + esc(x.n) + '</span><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></a>';
+    /* 亮点：二级篇章导航，12 组一行铺开 */
+    s += '<div class="chapter-bar"><span class="cb-label">' + (meta.chapterCount || 0) + ' 组知识点</span><div class="cb-links">' +
+      layers.slice(1).map(function (l) { return '<a href="#/doc/' + l.entry + '" title="' + esc(l.goal || '') + '">' + esc(l.name) + '</a>'; }).join('') +
+      '</div></div>';
+
+    /* 3. 按用户目标分组，而不是按技术栈分组 */
+    s += '<section class="section" id="goals">' + sectionHead('新手路径', '你想做什么？先选一个目标', '不问你学过什么，只问你现在要解决的问题。每条路径给一组按顺序排好的正文，点开就能开始读。') +
+      '<div class="goal-grid">' + goals.map(function (g) {
+        var links = g.slugs.map(function (sl) { return bySlug[sl] ? '<a href="#/doc/' + sl + '">' + esc(bySlug[sl].title) + '</a>' : ''; }).filter(Boolean).join('');
+        return '<div class="goal-card"><div class="gc-top"><span class="gc-icon">' + icon(g.icon) + '</span><h3>' + esc(g.t) + '</h3></div><p>' + esc(g.d) + '</p><div class="gc-links">' + links + '</div></div>';
       }).join('') + '</div></section>';
 
-    /* 精选文章：按主题分组，每组一句导读 + 一串链接 */
-    s += '<section class="section">' + sectionHead('精选文章', '按主题挑着读', '每组先给一句导读，再列具体篇目；点开就是带推导、自绘图和可运行代码的正文，不是让你再去别处搜。') +
+    /* 4. 核心内容矩阵：12 组，每组一句说明 + 篇数 + 图数 */
+    s += '<section class="section">' + sectionHead('全部知识点', '按 ' + (meta.chapterCount || 0) + ' 组铺开，共 ' + (meta.pointCount || 0) + ' 条', '每组先说清「学完能做什么」，再逐条点开正文。篇数与图数由目录实时统计，不是写死的宣传数字。') +
+      '<div class="matrix-grid">' + layers.slice(1).map(function (l) {
+        var list = docs.filter(function (d) { return d.category === l.key; });
+        var figs = list.reduce(function (n, d) { return n + (d.figures || 0); }, 0);
+        return '<a class="matrix-card" href="#/doc/' + l.entry + '"><div class="mc-top"><span class="mc-no">' + l.no + '</span><span class="mc-count">' + list.length + ' 篇 · ' + figs + ' 图</span></div><h3>' + esc(l.name) + '</h3><p>' + esc(l.desc) + '</p><div class="mc-goal">学完能：' + esc(l.goal || '') + '</div></a>';
+      }).join('') + '</div></section>';
+
+    /* 5. 热门榜 + 精选两层卡片 */
+    s += '<section class="section">' + sectionHead('精选与热门', '不知道看哪篇，就看这两组', '左边是问得最多的一组，按顺序列出并标出字数与更新时间；右边是编辑按主题排的必读顺序。每条都点开完整正文。') +
+      '<div class="hot-layout"><div class="hot-rank"><div class="hr-head">🔥 高频先读 <span>Top ' + Math.min(hotRank.length, 10) + '</span></div>' +
+      hotRank.slice(0, 10).map(function (sl, i) {
+        var d = bySlug[sl]; if (!d) return '';
+        return '<a class="hr-item" href="#/doc/' + sl + '"><span class="hr-no">' + (i + 1) + '</span><span class="hr-main"><b>' + esc(d.title) + '</b><span>' + kfmt(d.chars || 0) + ' 字 · 更新 ' + esc(d.updated || '') + '</span></span></a>';
+      }).join('') + '</div>' +
       '<div class="picks">' + picks.map(function (g) {
         return '<div class="pick-group"><div class="pg-head"><h3>' + esc(g.t) + '</h3><p>' + esc(g.d) + '</p></div><div class="pg-links">' +
           g.slugs.map(function (sl) { var d = bySlug[sl]; return d ? '<a href="#/doc/' + sl + '">' + esc(d.title) + '</a>' : ''; }).join('') +
           '</div></div>';
+      }).join('') + '</div></div></section>';
+
+    /* 6. 实战 / 案例：讲完概念还要能跑起来 */
+    var cases = [
+      { t: '手写一个能停下来的循环', d: '不用任何框架，把决策、终止条件、错误回传、检查点写成一段能跑的程序。', sl: '05-agent-loop', tag: '动手' },
+      { t: '给答案接上出处与拒答', d: '切分、双路召回、融合重排、溯源引用、材料不足时如实说不知道。', sl: '08-rag', tag: '工程' },
+      { t: '高频面试题的完整答法', d: '从第一层定义答到第四层追问，附能被继续追问的项目讲法。', sl: '16-interview-qa', tag: '面试' },
+      { t: '开给别人用之前的清单', d: '幂等、退避、护栏、灰度回滚、成本与轨迹，逐项落到代码里。', sl: '17-production-checklist', tag: '清单' },
+      { t: '把知识点串成作品', d: '每个项目带架构、代码骨架、评测口径与追问预判。', sl: '14-projects', tag: '作品' },
+      { t: '注入与越权怎么防', d: '直接注入、间接注入、最小权限、输出护栏，用本地样例跑一遍。', sl: '12-safety', tag: '安全' }
+    ];
+    s += '<section class="section">' + sectionHead('能落地的部分', '讲完概念，还要能跑起来', '教程站最容易停在「讲清楚是什么」。这一组把可运行的实现、可照着勾的清单、能讲给面试官听的项目收在一起。') +
+      '<div class="case-grid">' + cases.filter(function (c) { return bySlug[c.sl]; }).map(function (c) {
+        var d = bySlug[c.sl];
+        return '<a class="case-card" href="#/doc/' + c.sl + '"><span class="case-tag">' + esc(c.tag) + '</span><h3>' + esc(c.t) + '</h3><p>' + esc(c.d) + '</p><div class="case-foot"><span>' + kfmt(d.chars || 0) + ' 字 · ' + d.figures + ' 图 · ' + d.codes + ' 段代码</span>' + arrow + '</div></a>';
       }).join('') + '</div></section>';
 
-    /* 正文预览：让用户一进首页就看到「具体内容」 */
-    var preview = bySlug['01-how-llm-works'];
-    if (preview) {
-      var firstFig = /:::figure[\s\S]*?\n:::/.exec(preview.md);
-      var intro = preview.md.split(/\n##\s/)[0].replace(/^[\s\S]*?\n/, '').trim();
-      var para = intro.split(/\n\n/).filter(function (x) { return x.trim() && x.charAt(0) !== ':'; }).slice(0, 2);
-      s += '<section class="section">' + sectionHead('正文长什么样', '不卖关子，先给你看一段', '下面是网站里一篇正文的真实开头与自绘示意图。整篇都是这个密度：提问、破误解、图解、追问、可运行代码、自检、小结。') +
-        '<div class="preview"><div class="preview-bar"><span class="preview-dot"></span><span>正文摘录 · ' + esc(preview.title) + '</span><a href="#/doc/' + preview.slug + '">读完整篇 →</a></div><div class="preview-body">' +
-        para.map(function (p) { return '<p>' + inline(p.replace(/\n/g, ' ')) + '</p>'; }).join('') +
-        (firstFig ? renderContainer(firstFig[0]) : '') +
-        '<a class="preview-more" href="#/doc/' + preview.slug + '">继续读：从「猜词」推出四件事 →</a></div></div></section>';
-    }
+    /* 7. 数据与信任：全部数字由 docs 实时统计 */
+    s += '<section class="section">' + sectionHead('内容规模', '用数字说明这套教程有多厚', '下面每个数字都由 docs 目录实时统计生成，不是写死的宣传语。') +
+      '<div class="trust-strip">' +
+      '<div class="trust-cell"><b>' + docs.length + '</b><span>篇原创正文</span></div>' +
+      '<div class="trust-cell"><b>' + kfmt(meta.totalChars || 0) + '</b><span>字中文正文</span></div>' +
+      '<div class="trust-cell"><b>' + (meta.totalFigures || 0) + '</b><span>张自绘示意图</span></div>' +
+      '<div class="trust-cell"><b>' + (meta.totalCodes || 0) + '</b><span>段可运行代码</span></div>' +
+      '<div class="trust-cell"><b>' + (meta.glossaryCount || 0) + '</b><span>条知识点索引</span></div>' +
+      '</div><div class="trust-note">内容更新至 <b>' + esc(meta.built || '') + '</b> · 全部示例只用 Python 标准库，零账号、零联网、零第三方依赖</div></section>';
 
-    /* 完整目录平铺 */
-    s += '<section class="section">' + sectionHead('完整目录', '按篇章分组的全部文章', '每一个标题都是网站上的一篇完整正文。带「热」标记的是被问得最多、也最该先读的几篇。') +
-      '<div class="all-groups">' + layers.map(function (l) {
-        var list = docs.filter(function (d) { return d.category === l.key; });
-        if (!list.length) return '';
-        return '<div class="all-group"><div class="ag-head"><span class="ag-no">' + l.no + '</span><div><h3>' + esc(l.name) + '</h3><p>' + esc(l.desc) + '</p></div><span class="ag-count">' + list.length + ' 篇</span></div><div class="ag-list">' + list.map(function (d) { return docLine(d, true); }).join('') + '</div></div>';
-      }).join('') + '</div><div class="all-more"><a href="#/all">查看完整目录页 →</a></div></section>';
-
-    /* 关于 + CTA */
-    s += '<section class="section">' + sectionHead('关于本站', '为什么这样写', '目标读者是完全没做过 Agent、想转行的人。所以每一篇都从「为什么会发生」讲起，而不是先甩一个概念。') +
-      '<table class="compare"><thead><tr><th>维度</th><th>知识点清单</th><th>提纲式教程</th><th class="us">AgentOffer</th></tr></thead><tbody>' +
-      '<tr><td>内容形态</td><td>链接与目录</td><td>概念与表格</td><td class="us">原创正文 + 自绘示意图</td></tr>' +
-      '<tr><td>代码</td><td>无</td><td>零散片段</td><td class="us">完整可运行，零第三方依赖</td></tr>' +
-      '<tr><td>讲解方式</td><td>给结论</td><td>给结论</td><td class="us">从机制推导到工程取舍</td></tr>' +
-      '<tr><td>失败与坑</td><td>不提</td><td>很少提</td><td class="us">每篇都有踩坑与边界</td></tr>' +
-      '<tr><td>适合谁</td><td>已入门</td><td>已入门</td><td class="us">零基础转行</td></tr>' +
-      '<tr><td>收尾</td><td>—</td><td>无</td><td class="us">自检清单 + 三句话小结</td></tr>' +
-      '</tbody></table></section>';
+    /* 8. 快捷工具入口 + 转化 CTA */
+    var tools = [
+      { t: '学习路线', h: '#/roadmap', i: 'road' }, { t: '知识点索引', h: '#/index', i: 'search' },
+      { t: '全部文章', h: '#/all', i: 'grid' }, { t: '路线总纲', h: '#/doc/00-start-here', i: 'book' },
+      { t: '面试八股', h: '#/doc/16-interview-qa', i: 'chat' }, { t: '落地清单', h: '#/doc/17-production-checklist', i: 'shield' },
+      { t: '关于本站', h: '#/about', i: 'info' }, { t: '源码仓库', h: (meta.repo || '#/'), i: 'case' }
+    ];
+    s += '<section class="section">' + sectionHead('快捷入口', '不读书的时候，也能直接去用', '查一个术语、挑一个专题、翻一份清单，或者去仓库看源文件，都不用绕目录。') +
+      '<div class="tool-grid">' + tools.map(function (t) {
+        var ext = /^https?:/.test(t.h) ? ' target="_blank" rel="noopener"' : '';
+        return '<a class="tool-cell" href="' + t.h + '"' + ext + '><span class="tc-icon">' + icon(t.i) + '</span><b>' + esc(t.t) + '</b></a>';
+      }).join('') + '</div></section>';
     s += ctaBlock();
+
+    /* 9. 关于与贡献 */
+    s += '<section class="section">' + sectionHead('关于与贡献', '这套内容是怎么写出来的', '目标读者是完全没做过 Agent、想转行的人。所以每一篇都从「为什么会发生」讲起，先破一个常见误解，再给类比、自绘图、层层追问、能跑的代码、踩坑边界与自检清单，最后用三句话收口。') +
+      '<div class="about-strip"><div class="as-col"><h3>不做什么</h3><p>不给资料索引，不堆名词清单，不写「一看就会」的提纲。每篇都是能独立读完的正文，配自绘的示意图与零依赖代码。</p></div>' +
+      '<div class="as-col"><h3>怎么核对</h3><p>docs 目录是唯一内容源，站点与仓库由同一份构建脚本生成。改动一处，目录、索引、字数与更新时间一起变化，不会出现「目录里有、正文没有」。</p></div>' +
+      '<div class="as-col"><h3>怎么参与</h3><p>发现写错、某个实践该更新、有更好的图，都欢迎到仓库提 Issue 或 PR。数据与结论只写能核对的口径，不编数字。</p><a class="as-link" href="' + (meta.repo || '#/') + '" target="_blank" rel="noopener">前往源码仓库 ' + arrow + '</a></div></div></section>';
+
     return s + '</div>';
   }
 
   /* ---------- 全部文章页 ---------- */
   function renderAll() {
     var s = '<div class="page fade narrow"><div class="crumb"><a href="#/">首页</a><span>/</span><span>全部文章</span></div>';
-    s += '<div class="page-head"><div class="section-kicker">Contents</div><h1>全部文章</h1><p>共 ' + docs.length + ' 篇原创正文，按小白的认知顺序分六个篇章。每篇都有自绘图、可运行代码、自检清单与三句话小结；点标题直接读正文。</p></div>';
+    s += '<div class="page-head"><div class="section-kicker">Contents</div><h1>全部文章</h1><p>共 ' + docs.length + ' 篇原创正文，按 ' + (meta.chapterCount || 0) + ' 组知识点分组。每篇都有自绘图、可运行代码、自检清单与三句话小结；点标题直接读正文。</p></div>';
     s += '<div class="all-groups page-groups">' + layers.map(function (l) {
       var list = docs.filter(function (d) { return d.category === l.key; });
       if (!list.length) return '';
@@ -415,7 +454,7 @@
   /* ---------- 知识点索引页 ---------- */
   function renderIndex() {
     var s = '<div class="page fade narrow"><div class="crumb"><a href="#/">首页</a><span>/</span><span>知识点索引</span></div>';
-    s += '<div class="page-head"><div class="section-kicker">Index</div><h1>知识点索引</h1><p>' + (meta.glossaryCount || 0) + ' 条术语速查，按六个篇章分组。每条一句话讲清是什么，点「看正文」跳到对应文章；遇到具体问题时也可以按关键词查。</p></div>';
+    s += '<div class="page-head"><div class="section-kicker">Index</div><h1>知识点索引</h1><p>' + (meta.glossaryCount || 0) + ' 条术语速查，按 ' + (meta.chapterCount || 0) + ' 组知识点分组。每条一句话讲清是什么，点「看正文」跳到对应文章；遇到具体问题时也可以按关键词查。</p></div>';
     s += '<div class="glossary-tools"><div class="gt-search">' + icon('search') + '<input id="glossaryInput" type="text" placeholder="筛选知识点，例如：幂等 / 注入 / 检索…" autocomplete="off"><span id="glossaryCount" class="gt-count"></span></div></div>';
     s += '<div id="glossaryBody">' + glossary.map(function (g, gi) {
       return '<section class="gl-group" data-gi="' + gi + '"><div class="gl-head"><span class="gl-no">' + String(gi + 1).padStart(2, '0') + '</span><h2>' + esc(g.g) + '</h2><span class="gl-count">' + g.items.length + ' 条</span></div><div class="gl-grid">' +
@@ -484,7 +523,7 @@
     var s = '<div class="page fade narrow"><div class="crumb"><a href="#/">首页</a><span>/</span><span>关于本站</span></div>';
     s += '<div class="page-head"><div class="section-kicker">About</div><h1>关于本站</h1><p>如果你打开招聘软件搜「Agent 开发」，看到那串要求的第一反应是「完了，我得先把大模型学一遍」——然后收藏一张密密麻麻的名词清单，第二天再打开还是不知道第一步该敲什么：这份指南就是为你写的。</p></div>';
     s += '<div class="md about-md"><h2>它和名词清单的区别只有一条</h2><p>按小白的认知顺序，把「要掌握的知识点」按依赖关系一层层排好，后一层必须踩在前一层上。每一条知识点后面都有一个链接，点开就是网站上的一篇完整正文：有推导、有自绘图、有可运行代码，不是让你再去别处搜。</p>';
-    s += '<h2>每一篇是怎么写的</h2><p>16 篇图解主线采用同一套讲解结构，目标是让零基础的人真能读下去：</p>';
+    s += '<h2>每一篇是怎么写的</h2><p>路线总纲把 ' + (meta.pointCount || 0) + ' 个知识点逐条罗列，每个知识点再单独写成一篇完整正文；全部采用同一套讲解结构，目标是让零基础的人真能读下去：</p>';
     s += '<blockquote><p>开篇一个真实场景提问 → 先破一个常见误解 → 用生活类比讲机制 → 自绘示意图 → 层层追问 → 一段可运行代码并逐行解释 → 踩坑与边界 → 自检清单 → 三句话小结</p></blockquote>';
     s += '<p>站点会把示意图渲染成 SVG、把要点与自检渲染成讲解卡片。文档源文件是唯一内容源，一份文件同时驱动 GitHub 与网站。</p>';
     s += '<h2>代码可以真的跑起来</h2><p>文中所有示例只用 Python 标准库，零账号、零联网，复制保存即可运行。想接真实模型服务时，只需改三个环境变量，业务逻辑一行不用改。</p>';
@@ -535,6 +574,8 @@
   /* ---------- router ---------- */
   var current = { nav: 'home', slug: null, hash: '' };
   function route() {
+    var bu = document.getElementById('brandUpdate');
+    if (bu && meta.built) bu.textContent = '内容更新至 ' + meta.built;
     var hash = location.hash || '#/';
     var m = /^#\/doc\/([\w-]+)$/.exec(hash);
     var d = m && bySlug[m[1]];

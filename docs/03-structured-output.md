@@ -1,7 +1,7 @@
 ---
 title: 让输出稳定下来
-category: 大模型与调用
-order: 3
+category: 提示词与输出契约
+order: 203
 summary: 「只输出 JSON」为什么没用？把校验从模型手里收回来：语法、结构、语义三层契约，加上自动纠正与果断降级。
 minutes: 18
 ---

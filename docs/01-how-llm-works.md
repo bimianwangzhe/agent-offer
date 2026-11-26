@@ -1,7 +1,7 @@
 ---
 title: 大模型到底在干什么
-category: 大模型与调用
-order: 1
+category: 模型与调用基础
+order: 201
 summary: 不讲公式。只用「猜下一个词」这一件事，把幻觉、上下文长度、Token 计费、输出不稳定、以及提示词为什么有用，全部推导出来。
 minutes: 16
 ---

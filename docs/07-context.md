@@ -1,7 +1,7 @@
 ---
 title: 上下文工程：Agent 真正的命门
-category: 工具与上下文
-order: 7
+category: 上下文工程
+order: 207
 summary: 「聊了二十轮突然变笨」的完整解法：一张预算表、四层结构、三种压缩策略、预检路由与前缀缓存。
 minutes: 24
 ---

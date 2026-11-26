@@ -1,7 +1,7 @@
 ---
 title: Agent 开发高频面试题精讲
-category: 项目与面试
-order: 16
+category: 多智能体与项目表达
+order: 216
 summary: 用 10 道真实高频题，把「决策闭环、工具链路、检索、评测」这些必考知识点讲成能答到第四层的回答，而不是背名词。
 minutes: 32
 ---
