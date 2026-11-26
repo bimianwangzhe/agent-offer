@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="AgentOffer — 从零基础到能独立交付的 Agent 开发指南。16 篇原创图解长文，按知识点的依赖关系分六层递进，全部代码零依赖可运行。">
-<meta name="keywords" content="Agent 开发,AI Agent,大模型应用开发,学习路线,知识点清单,工具调用,上下文工程,检索增强,记忆系统,评测,安全护栏,面试题">
+<meta name="description" content="AgentOffer — 从零基础到能独立交付的 Agent 开发指南。18 篇原创图解长文，按知识点的依赖关系分六层递进，全部代码零依赖可运行。">
+<meta name="keywords" content="Agent 开发,AI Agent,大模型应用开发,学习路线,知识点索引,面试八股,工具调用,上下文工程,检索增强,记忆系统,评测,安全护栏,生产化,面试题">
 <title>AgentOffer · Agent 开发岗上岸指南</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d9488'/%3E%3Cpath d='M32 12 L48 32 L32 52 L16 32 Z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='32' r='5' fill='white'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-<h2 class="sr-only">AgentOffer：从零基础到能独立交付的 Agent 开发指南，16 篇原创图解长文，按六层知识点递进：模型与调用、Agent 循环、工具与上下文、检索记忆与框架、评测与可靠性、项目与表达。</h2>
+<h1 class="sr-only">AgentOffer：从零基础到能独立交付的 Agent 开发指南，18 篇原创图解长文，按六层知识点递进：模型与调用、Agent 循环、工具与上下文、检索记忆与框架、评测与可靠性、项目与表达。</h1>
 
 <div id="progress" class="progress"><span></span></div>
 
@@ -28,15 +28,17 @@
 
     <nav class="nav" aria-label="主导航">
       <a href="#/" data-nav="home">首页</a>
-      <a href="#/doc/00-start-here" data-nav="roadmap">学习路线</a>
-      <a href="#/doc/05-agent-loop" data-nav="loop">Agent 循环</a>
-      <a href="#/doc/06-tool-calling" data-nav="context">工具与上下文</a>
-      <a href="#/doc/14-projects" data-nav="career">项目与表达</a>
+      <a href="#/roadmap" data-nav="roadmap">学习路线</a>
+      <a href="#/all" data-nav="all">全部文章</a>
+      <a href="#/index" data-nav="index">知识点索引</a>
+      <a href="#/doc/16-interview-qa" data-nav="interview">面试八股</a>
+      <a href="#/about" data-nav="about">关于</a>
     </nav>
 
     <div class="topbar-actions">
-      <button id="searchOpen" class="icon-btn" aria-label="搜索" title="搜索 (Ctrl+K)">
+      <button id="searchOpen" class="search-trigger" aria-label="搜索" title="搜索 (Ctrl+K)">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5 L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span>搜索文档</span><kbd>Ctrl K</kbd>
       </button>
       <button id="themeToggle" class="icon-btn" aria-label="切换主题" title="切换亮/暗主题">
         <svg class="ico-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -53,21 +55,25 @@
   </div>
 </header>
 
-<main id="app"></main>
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="文档目录"></aside>
+  <div class="mobile-mask" id="mobileMask"></div>
+  <main id="app" class="main"></main>
+</div>
 
 <footer class="footer">
   <div class="footer-inner">
     <div class="footer-brand">
       <div class="footer-logo">Agent<span>Offer</span></div>
-      <p>16 篇原创图解长文，按知识点的依赖关系分六层递进，从「模型在猜什么」一路踩到「能独立交付」。给正文，不给名词清单。</p>
+      <p>按小白的认知顺序，把要掌握的知识点一层层排好。给正文、给自绘图、给可运行代码，不给名词清单。</p>
       <p class="footer-domain">线上站点 <a href="https://agent.meetoffer.cn" target="_blank" rel="noopener">agent.meetoffer.cn</a></p>
     </div>
     <div class="footer-col">
-      <h4>从零开始</h4>
-      <a href="#/doc/00-start-here">学习路线</a>
-      <a href="#/doc/01-how-llm-works">大模型在干什么</a>
-      <a href="#/doc/02-first-call">第一次调用</a>
-      <a href="#/doc/04-what-is-agent">什么是 Agent</a>
+      <h4>开始阅读</h4>
+      <a href="#/roadmap">学习路线</a>
+      <a href="#/all">全部文章</a>
+      <a href="#/index">知识点索引</a>
+      <a href="#/doc/00-start-here">写给想转 Agent 的你</a>
     </div>
     <div class="footer-col">
       <h4>逐层深入</h4>
@@ -78,12 +84,10 @@
     </div>
     <div class="footer-col">
       <h4>做成作品</h4>
-      <a href="#/doc/11-eval">评测与回归</a>
       <a href="#/doc/12-safety">安全与护栏</a>
       <a href="#/doc/14-projects">三个简历项目</a>
-      <a href="#/doc/15-interview">面试追问链</a>
-      <a href="https://github.com/bimianwangzhe/agent-offer" target="_blank" rel="noopener">GitHub 仓库</a>
-      <a href="https://github.com/bimianwangzhe/agent-offer/issues" target="_blank" rel="noopener">提 Issue</a>
+      <a href="#/doc/16-interview-qa">高频面试题</a>
+      <a href="#/about">关于本站</a>
     </div>
   </div>
   <div class="footer-bottom">
@@ -97,11 +101,11 @@
   <div class="search-box" role="dialog" aria-modal="true" aria-label="全文搜索">
     <div class="search-input-row">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      <input id="searchInput" type="text" placeholder="搜索文档、概念、面试题…" autocomplete="off" spellcheck="false">
+      <input id="searchInput" type="text" placeholder="搜索文章、知识点、面试题…" autocomplete="off" spellcheck="false">
       <kbd>ESC</kbd>
     </div>
     <div id="searchResults" class="search-results"></div>
-    <div class="search-hint">输入关键词检索 16 篇原创文档全文 · ↑↓ 选择 · Enter 打开</div>
+    <div class="search-hint">检索全文、小节标题与知识点索引 · ↑↓ 选择 · Enter 打开</div>
   </div>
 </div>
 

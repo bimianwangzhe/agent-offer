@@ -1,14 +1,17 @@
 (function () {
   'use strict';
-  var C = window.AGENT_CONTENT || { meta: {}, docs: [] };
+  var C = window.AGENT_CONTENT || { meta: {}, docs: [], layers: [], series: [], picks: [], glossary: [] };
   var docs = (C.docs || []).slice().sort(function (a, b) { return a.order - b.order; });
+  var layers = C.layers || [], series = C.series || [], picks = C.picks || [], glossary = C.glossary || [];
+  var meta = C.meta || {};
   var bySlug = {};
   docs.forEach(function (d) { bySlug[d.slug] = d; });
-  var CATS = ['大模型与调用', 'Agent 原理', '工具与上下文', '检索、记忆与框架', '评测与可靠性', '项目与面试'];
   var app = document.getElementById('app');
+  var sidebar = document.getElementById('sidebar');
+  var CATS = layers.map(function (l) { return l.key; });
 
   function esc(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
   function slugify(s) {
     return String(s).replace(/[^\w\u4e00-\u9fa5-]/g, '').replace(/\s+/g, '-').slice(0, 40);
@@ -45,10 +48,12 @@
       if (comment) return '<span class="tok-c">' + comment + '</span>';
       if (num) return '<span class="tok-n">' + num + '</span>';
       if (word && KW.test(word)) return '<span class="tok-k">' + word + '</span>';
-      if (word && /^(print|len|range|json|client|llm|run|execute|answer|build_messages|rerank|hybrid_search)$/.test(word)) return '<span class="tok-f">' + word + '</span>';
+      if (word && /^(print|len|range|json|client|llm|run|execute|answer|build_messages|rerank|hybrid_search|main|State|ToolResult)$/.test(word)) return '<span class="tok-f">' + word + '</span>';
       return all;
     });
   }
+
+  /* ---------- 自绘 SVG 示意图 ---------- */
   var figSeq = 0;
   function wrapCn(s, per) {
     var out = [], cur = '';
@@ -160,13 +165,12 @@
     if (kind === 'figure') return renderFigure(title, body);
     return renderBox(kind, title, body);
   }
-  function renderMarkdown(md) {
+  function renderMarkdown(md, slug) {
     var lines = String(md).replace(/\r\n/g, '\n').split('\n');
-    var out = [], heads = [];
+    var out = [], heads = [], seen = {};
     var i = 0;
     while (i < lines.length) {
       var L = lines[i];
-      // custom container :::kind title ... :::
       if (/^:::\s*\S/.test(L)) {
         var buf = [];
         i++;
@@ -175,29 +179,27 @@
         out.push(renderContainer([L].concat(buf).join('\n')));
         continue;
       }
-      // fenced code
       if (/^\s*```/.test(L)) {
         var lang = L.replace(/^\s*```/, '').trim() || 'text';
-        var buf = [];
+        var cbuf = [];
         i++;
-        while (i < lines.length && !/^\s*```/.test(lines[i])) { buf.push(lines[i]); i++; }
+        while (i < lines.length && !/^\s*```/.test(lines[i])) { cbuf.push(lines[i]); i++; }
         i++;
-        var code = buf.join('\n');
+        var code = cbuf.join('\n');
         out.push('<div class="codeblock"><div class="code-head"><span class="code-lang">' + esc(lang) + '</span><button class="copy-btn" type="button">复制</button></div><pre><code>' + highlight(code) + '</code></pre></div>');
         continue;
       }
-      // headings
       var hm = /^(#{1,4})\s+(.+)$/.exec(L);
       if (hm) {
         var lvl = hm[1].length, txt = hm[2].trim();
         var id = slugify(txt);
-        out.push('<h' + lvl + ' id="' + id + '">' + inline(txt) + '</h' + lvl + '>');
+        if (seen[id]) { seen[id] += 1; id = id + '-' + seen[id]; } else seen[id] = 1;
+        out.push('<h' + lvl + ' id="' + id + '">' + inline(txt) +
+          (lvl >= 2 ? '<a class="h-anchor" href="#' + id + '" data-anchor="' + id + '" aria-label="锚点">#</a>' : '') + '</h' + lvl + '>');
         if (lvl === 2 || lvl === 3) heads.push({ id: id, text: txt.replace(/[*`]/g, ''), lvl: lvl });
         i++; continue;
       }
-      // hr
       if (/^\s*(---|\*\*\*|___)\s*$/.test(L)) { out.push('<hr>'); i++; continue; }
-      // table
       if (/^\s*\|/.test(L) && i + 1 < lines.length && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
         var rows = [];
         var headCells = L.trim().replace(/^\||\|$/g, '').split('|').map(function (x) { return x.trim(); });
@@ -217,14 +219,12 @@
         t += '</tbody></table></div>';
         out.push(t); continue;
       }
-      // blockquote
       if (/^\s*>/.test(L)) {
         var q = [];
         while (i < lines.length && /^\s*>/.test(lines[i])) { q.push(lines[i].replace(/^\s*>\s?/, '')); i++; }
         out.push('<blockquote>' + q.map(function (x) { return '<p>' + inline(x) + '</p>'; }).join('') + '</blockquote>');
         continue;
       }
-      // lists
       if (/^\s*(?:[-*] |\d+\. |\[[ x]\] )/.test(L)) {
         var items = [], ordered = /^\s*\d+\. /.test(L), checks = /^\s*\[[ x]\] /.test(L);
         while (i < lines.length && /^\s*(?:[-*] |\d+\. |\[[ x]\] )/.test(lines[i])) {
@@ -238,14 +238,13 @@
         out.push('<' + tag + (checks ? ' class="checkbox"' : '') + '>' + items.join('') + '</' + tag + '>');
         continue;
       }
-      // paragraph
       if (L.trim() === '') { i++; continue; }
       var para = [];
       while (i < lines.length && lines[i].trim() !== '' &&
              !/^\s*```/.test(lines[i]) && !/^#{1,4}\s/.test(lines[i]) &&
              !/^\s*\|/.test(lines[i]) && !/^\s*>/.test(lines[i]) &&
              !/^\s*(?:[-*] |\d+\. |\[[ x]\] )/.test(lines[i]) &&
-             !/^\s*(---|\*\*\*|___)\s*$/.test(lines[i])) {
+             !/^\s*(---|\*\*\*|___)\s*$/.test(lines[i]) && !/^:::\s*\S/.test(lines[i])) {
         para.push(lines[i].trim()); i++;
       }
       if (para.length) out.push('<p>' + inline(para.join(' ')) + '</p>');
@@ -254,50 +253,140 @@
     return { html: out.join('\n'), heads: heads };
   }
 
-  // ---------- icons ----------
+  /* ---------- icons ---------- */
   var ICONS = {
-    '大模型与调用': '<path d="M7 8h10M7 12h7M7 16h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="17.5" cy="12" r="1.6" fill="currentColor"/>',
-    'Agent 原理': '<circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
-    '工具与上下文': '<path d="M14 6a4 4 0 0 0-5.2 5.2L4 16v4h4l4.8-4.8A4 4 0 0 0 18 10l-3 3-2-2 3-3a4 4 0 0 0-2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
-    '检索、记忆与框架': '<circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 10.5h5M10.5 8v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
-    '评测与可靠性': '<path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6l-8-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
-    '项目与面试': '<path d="M4 7h16v12H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 7V5h6v2M4 12h16M9 15h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
+    road: '<path d="M5 19h3l3-13 3 9 2-5h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    book: '<path d="M4 5h7a3 3 0 0 1 3 3v12a3 3 0 0 0-3-3H4zM20 5h-3a3 3 0 0 0-3 3v12a3 3 0 0 1 3-3h3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    loop: '<path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    tool: '<path d="M14 6a4 4 0 0 0-5.2 5.2L4 16v4h4l4.8-4.8A4 4 0 0 0 18 10l-3 3-2-2 3-3a4 4 0 0 0-2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    chat: '<path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 9h8M8 12h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    case: '<path d="M4 7h16v12H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 7V5h6v2M4 12h16M9 15h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    search: '<circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    shield: '<path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6l-8-3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    layers: '<path d="m12 3 9 5-9 5-9-5 9-5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    grid: '<rect x="4" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="4" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/>',
+    home: '<path d="m4 11 8-7 8 7v9H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 20v-6h6v6" fill="none" stroke="currentColor" stroke-width="2"/>',
+    info: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
   };
-  function icon(c) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[c] || ICONS['大模型与调用']) + '</svg>'; }
+  function icon(k) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[k] || ICONS.book) + '</svg>'; }
 
-  // ---------- home ----------
-  var STAGES = [
-    { no: '01', t: '模型与调用', d: 'Token 与幻觉、请求五块、超时退避、输出三层契约', time: '4 篇 · 第 1~2 周', to: '01-how-llm-works' },
-    { no: '02', t: 'Agent 循环', d: '唯一判据、循环状态、四个终止条件、错误回传、检查点', time: '2 篇 · 第 3~5 周', to: '04-what-is-agent' },
-    { no: '03', t: '工具与上下文', d: '工具 Schema、权限矩阵、幂等键、上下文预算与压缩', time: '2 篇 · 第 6~7 周', to: '06-tool-calling' },
-    { no: '04', t: '检索、记忆与框架', d: '切分与双路检索、溯源拒答、三层记忆、框架六大件', time: '3 篇 · 第 8~9 周', to: '08-rag' },
-    { no: '05', t: '评测与可靠性', d: '用例集、性质断言、回归门禁、注入防护、幂等降级', time: '3 篇 · 第 9~10 周', to: '11-eval' },
-    { no: '06', t: '项目与表达', d: '三个项目的约束与权衡、数字口径、四层追问链', time: '2 篇 · 第 10 周', to: '14-projects' }
+  /* ---------- 左侧常驻目录树 ---------- */
+  var NAVS = [
+    { h: '#/', t: '首页', i: 'home', key: 'home' },
+    { h: '#/roadmap', t: '学习路线', i: 'road', key: 'roadmap' },
+    { h: '#/all', t: '全部文章', i: 'grid', key: 'all' },
+    { h: '#/index', t: '知识点索引', i: 'search', key: 'index' },
+    { h: '#/about', t: '关于本站', i: 'info', key: 'about' }
   ];
+  function collapsedKey(k) { return 'ao-collapse-' + k; }
+  function isCollapsed(k) {
+    try { return localStorage.getItem(collapsedKey(k)) === '1'; } catch (e) { return false; }
+  }
+  function sidebarHtml(activeSlug, activeNav) {
+    var s = '<div class="side-scroll">';
+    s += '<div class="side-block"><div class="side-cap">站点导航</div>';
+    NAVS.forEach(function (n) {
+      s += '<a class="side-link nav-link' + (activeNav === n.key && !activeSlug ? ' active' : '') + '" href="' + n.h + '">' + icon(n.i) + '<span>' + n.t + '</span></a>';
+    });
+    s += '</div>';
+    layers.forEach(function (l) {
+      var list = docs.filter(function (d) { return d.category === l.key; });
+      if (!list.length) return;
+      var open = isCollapsed(l.key) || false;
+      var hasActive = list.some(function (d) { return d.slug === activeSlug; });
+      s += '<div class="side-block' + (open && !hasActive ? ' collapsed' : '') + '" data-group="' + esc(l.key) + '">';
+      s += '<button class="side-cap side-toggle" type="button" aria-expanded="' + (!open) + '"><span class="side-cap-no">' + l.no + '</span><span>' + esc(l.name) + '</span><span class="side-cap-count">' + list.length + '</span><svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+      s += '<div class="side-items">';
+      list.forEach(function (d) {
+        s += '<a class="side-link' + (d.slug === activeSlug ? ' active' : '') + '" href="#/doc/' + d.slug + '"><span class="side-no">' + d.no + '</span><span class="side-title">' + esc(d.title) + '</span>' + (d.hot ? '<span class="hot-dot" title="热门">热</span>' : '') + '</a>';
+      });
+      s += '</div></div>';
+    });
+    s += '<div class="side-foot"><b>' + docs.length + ' 篇</b> 原创图解长文<br><b>' + (meta.totalFigures || 0) + ' 张</b> 自绘示意图 · <b>' + (meta.totalCodes || 0) + ' 段</b> 可运行代码<br><a href="' + (meta.repo || '#/') + '" target="_blank" rel="noopener">在 GitHub 上查看 →</a></div>';
+    s += '</div>';
+    return s;
+  }
+  function bindSidebar() {
+    sidebar.querySelectorAll('.side-toggle').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var block = b.closest('.side-block');
+        var k = block.getAttribute('data-group');
+        var now = block.classList.toggle('collapsed');
+        b.setAttribute('aria-expanded', String(!now));
+        try { localStorage.setItem(collapsedKey(k), now ? '1' : '0'); } catch (e) {}
+      });
+    });
+  }
+
+  /* ---------- 通用零件 ---------- */
+  function kfmt(n) { return n >= 10000 ? (n / 10000).toFixed(1) + ' 万' : String(n); }
+  function docLine(d, withSummary) {
+    return '<a class="doc-line" href="#/doc/' + d.slug + '">' +
+      '<span class="dl-no">' + d.no + '</span>' +
+      '<span class="dl-main"><b>' + esc(d.title) + '</b>' + (d.hot ? '<span class="hot-tag">热</span>' : '') +
+      (withSummary ? '<span class="dl-sum">' + esc(d.summary) + '</span>' : '') + '</span>' +
+      '<span class="dl-meta">' + kfmt(d.chars || 0) + '字 · ' + d.minutes + 'min</span></a>';
+  }
+  function sectionHead(kicker, h2, p) {
+    return '<div class="section-head"><div class="section-kicker">' + esc(kicker) + '</div><h2 id="' + slugify(h2) + '">' + inline(h2) + '</h2>' + (p ? '<p>' + esc(p) + '</p>' : '') + '</div>';
+  }
+  function ctaBlock() {
+    return '<div class="cta"><div><h2>笔面情报与资料包，回复关键词领取</h2><p>按公司 / 岗位分类的笔面情报与网申时间线、主流笔试平台题型与规则差异、面经追问链合集与项目讲法模板。教程本身全部免费公开，这里只是额外的求职资料。</p><span class="cta-key">公众号回复：Agent</span></div><div class="cta-side"><a class="btn btn-primary" href="#/roadmap">从学习路线开始</a><div class="cta-note">1v1 咨询：微信 offer630</div></div></div>';
+  }
+
+  /* ---------- 首页 ---------- */
   function renderHome() {
-    var total = docs.length;
-    var stageHtml = STAGES.map(function (s) {
-      return '<a class="stage" href="#/doc/' + s.to + '"><div class="stage-no">' + s.no + '</div><h3>' + s.t + '</h3><p>' + s.d + '</p><div class="stage-time">' + s.time + '</div></a>';
-    }).join('');
-    var catHtml = CATS.map(function (c) {
-      var list = docs.filter(function (d) { return d.category === c; });
-      if (!list.length) return '';
-      return '<div class="cat-card"><div class="cat-top"><div class="cat-icon">' + icon(c) + '</div><h3>' + c + '</h3><span class="cat-count">' + list.length + ' 篇</span></div><ul class="cat-list">' +
-        list.map(function (d) { return '<li><a href="#/doc/' + d.slug + '">' + esc(d.title) + '</a></li>'; }).join('') + '</ul></div>';
-    }).join('');
-    return '<div class="home fade">' +
-      '<section class="hero"><div class="hero-inner"><div>' +
-        '<div class="eyebrow"><i></i> 免费 · 原创 · 持续更新</div>' +
-        '<h1>从零基础到<br><em>能独立交付</em>的<br>Agent 开发指南</h1>' +
-        '<p>按小白的认知顺序，把要掌握的知识点一层层排好：' + total + ' 篇原创图解长文，每篇从「为什么会这样」推到「代码该怎么写」。所有示例只用标准库，复制粘贴就能跑。</p>' +
-        '<div class="hero-btns"><a class="btn btn-primary" href="#/doc/00-start-here">看完整学习路线 <svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>' +
-        '<a class="btn btn-ghost" href="#/doc/05-agent-loop">直接看手写循环</a></div>' +
-      '</div><div class="hero-terminal"><div class="term-bar"><i></i><i></i><i></i><span>agent_loop.py</span></div>' +
-      '<div class="term-body"><span class="k">def</span> <span class="f">run</span>(goal, tools, budget):\n  state = <span class="f">State</span>(goal)\n  <span class="k">while</span> <span class="k">True</span>:\n    <span class="c"># 1 组装上下文</span>\n    msg = <span class="f">build_messages</span>(state)\n    <span class="c"># 2 模型决策</span>\n    d = llm.<span class="f">call</span>(msg, tools)\n    <span class="k">if</span> d.is_final: <span class="k">return</span> d.answer\n    <span class="k">if</span> state.rounds &gt;= budget.max:\n      <span class="k">return</span> <span class="f">fallback</span>(<span class="s">"超出预算"</span>)\n    <span class="c"># 3 执行 + 4 记录轨迹</span>\n    obs = tools.<span class="f">execute</span>(d.name, d.args)\n    state.trace.<span class="f">append</span>(obs)\n    state.rounds += <span class="n">1</span></div></div></div></section>' +
-      '<div class="stats"><div class="stat"><b>' + total + ' 篇</b><span>原创长文，不是链接清单</span></div><div class="stat"><b>50+ 张</b><span>自绘示意图</span></div><div class="stat"><b>零依赖</b><span>代码复制即可运行</span></div><div class="stat"><b>3 项目</b><span>能写进简历并答到第四层</span></div></div>' +
-      '<section class="section"><div class="section-head"><div class="section-kicker">Roadmap</div><h2>从不会到会：六层知识点，一层层往上踩</h2><p>不是贴「入门 / 进阶 / 实战」的标签，而是按依赖关系排知识点：后一层一定要用到前一层。点开任意一层，就是那几篇完整正文。</p></div><div class="roadmap-grid">' + stageHtml + '</div></section>' +
-      '<section class="section"><div class="section-head"><div class="section-kicker">Knowledge base</div><h2>按知识点域浏览全部 16 篇</h2><p>每篇都是「提问 → 破误解 → 图解 → 层层追问 → 可运行代码 → 自检 → 小结」，读完一篇就少一个困惑。</p></div><div class="cat-grid">' + catHtml + '</div></section>' +
-      '<section class="section"><div class="section-head"><div class="section-kicker">How we write</div><h2>这份教程是怎么写的</h2><p>目标读者是完全没做过 Agent、想转行的人。所以每一篇都从「为什么会发生」讲起，而不是先甩一个概念。</p></div>' +
+    var s = '<div class="page fade home">';
+    /* hero：一句话定位 + 数据背书 + 大按钮 */
+    s += '<section class="hero"><div class="hero-inner">' +
+      '<div class="hero-copy"><div class="eyebrow"><i></i> 免费 · 原创 · 持续更新</div>' +
+      '<h1>从零基础到<br><em>能独立交付</em>的<br>Agent 开发指南</h1>' +
+      '<p class="hero-lead">按小白的认知顺序，把要掌握的知识点一层层排好。' + docs.length + ' 篇原创图解长文，每篇从「为什么会这样」推到「代码该怎么写」；所有示例只用标准库，复制粘贴就能跑。</p>' +
+      '<div class="hero-btns"><a class="btn btn-primary" href="#/roadmap">开始学习 <svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>' +
+      '<a class="btn btn-ghost" href="#/all">查看全部文章</a></div>' +
+      '<div class="hero-stats"><span><b>' + docs.length + ' 篇</b>原创长文</span><span><b>' + kfmt(meta.totalChars || 0) + '</b>字正文</span><span><b>' + (meta.totalFigures || 0) + ' 张</b>自绘图</span><span><b>零依赖</b>代码可跑</span></div>' +
+      '</div>' +
+      '<div class="hero-side"><div class="hero-side-cap">这条线怎么走</div>' +
+      layers.map(function (l) { return '<a class="hero-step" href="#/doc/' + l.entry + '"><span>' + l.no + '</span><b>' + esc(l.name) + '</b><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></a>'; }).join('') +
+      '</div></div></section>';
+
+    /* 必看系列 */
+    s += '<section class="section">' + sectionHead('必看系列', '从哪里开始，先看这一组', '不知道第一步该敲什么时，按这六个入口走；每一条都直接点开网站上的完整正文。') +
+      '<div class="series-grid">' + series.map(function (x) {
+        return '<a class="series-card" href="#/doc/' + x.to + '"><div class="sc-top"><span class="sc-icon">' + icon(x.icon) + '</span><span class="sc-no">' + x.no + '</span></div><h3>' + esc(x.t) + '</h3><p>' + esc(x.d) + '</p><div class="sc-foot"><span>' + esc(x.n) + '</span><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></a>';
+      }).join('') + '</div></section>';
+
+    /* 精选文章：按主题分组，每组一句导读 + 一串链接 */
+    s += '<section class="section">' + sectionHead('精选文章', '按主题挑着读', '每组先给一句导读，再列具体篇目；点开就是带推导、自绘图和可运行代码的正文，不是让你再去别处搜。') +
+      '<div class="picks">' + picks.map(function (g) {
+        return '<div class="pick-group"><div class="pg-head"><h3>' + esc(g.t) + '</h3><p>' + esc(g.d) + '</p></div><div class="pg-links">' +
+          g.slugs.map(function (sl) { var d = bySlug[sl]; return d ? '<a href="#/doc/' + sl + '">' + esc(d.title) + '</a>' : ''; }).join('') +
+          '</div></div>';
+      }).join('') + '</div></section>';
+
+    /* 正文预览：让用户一进首页就看到「具体内容」 */
+    var preview = bySlug['01-how-llm-works'];
+    if (preview) {
+      var firstFig = /:::figure[\s\S]*?\n:::/.exec(preview.md);
+      var intro = preview.md.split(/\n##\s/)[0].replace(/^[\s\S]*?\n/, '').trim();
+      var para = intro.split(/\n\n/).filter(function (x) { return x.trim() && x.charAt(0) !== ':'; }).slice(0, 2);
+      s += '<section class="section">' + sectionHead('正文长什么样', '不卖关子，先给你看一段', '下面是网站里一篇正文的真实开头与自绘示意图。整篇都是这个密度：提问、破误解、图解、追问、可运行代码、自检、小结。') +
+        '<div class="preview"><div class="preview-bar"><span class="preview-dot"></span><span>正文摘录 · ' + esc(preview.title) + '</span><a href="#/doc/' + preview.slug + '">读完整篇 →</a></div><div class="preview-body">' +
+        para.map(function (p) { return '<p>' + inline(p.replace(/\n/g, ' ')) + '</p>'; }).join('') +
+        (firstFig ? renderContainer(firstFig[0]) : '') +
+        '<a class="preview-more" href="#/doc/' + preview.slug + '">继续读：从「猜词」推出四件事 →</a></div></div></section>';
+    }
+
+    /* 完整目录平铺 */
+    s += '<section class="section">' + sectionHead('完整目录', '按篇章分组的全部文章', '每一个标题都是网站上的一篇完整正文。带「热」标记的是被问得最多、也最该先读的几篇。') +
+      '<div class="all-groups">' + layers.map(function (l) {
+        var list = docs.filter(function (d) { return d.category === l.key; });
+        if (!list.length) return '';
+        return '<div class="all-group"><div class="ag-head"><span class="ag-no">' + l.no + '</span><div><h3>' + esc(l.name) + '</h3><p>' + esc(l.desc) + '</p></div><span class="ag-count">' + list.length + ' 篇</span></div><div class="ag-list">' + list.map(function (d) { return docLine(d, true); }).join('') + '</div></div>';
+      }).join('') + '</div><div class="all-more"><a href="#/all">查看完整目录页 →</a></div></section>';
+
+    /* 关于 + CTA */
+    s += '<section class="section">' + sectionHead('关于本站', '为什么这样写', '目标读者是完全没做过 Agent、想转行的人。所以每一篇都从「为什么会发生」讲起，而不是先甩一个概念。') +
       '<table class="compare"><thead><tr><th>维度</th><th>知识点清单</th><th>提纲式教程</th><th class="us">AgentOffer</th></tr></thead><tbody>' +
       '<tr><td>内容形态</td><td>链接与目录</td><td>概念与表格</td><td class="us">原创正文 + 自绘示意图</td></tr>' +
       '<tr><td>代码</td><td>无</td><td>零散片段</td><td class="us">完整可运行，零第三方依赖</td></tr>' +
@@ -305,68 +394,179 @@
       '<tr><td>失败与坑</td><td>不提</td><td>很少提</td><td class="us">每篇都有踩坑与边界</td></tr>' +
       '<tr><td>适合谁</td><td>已入门</td><td>已入门</td><td class="us">零基础转行</td></tr>' +
       '<tr><td>收尾</td><td>—</td><td>无</td><td class="us">自检清单 + 三句话小结</td></tr>' +
-      '</tbody></table></section>' +
-      '<div class="cta"><div><h2>笔面情报与资料包，回复关键词领取</h2><p>按公司 / 岗位分类的笔面情报与网申时间线、主流笔试平台题型与规则差异、面经追问链合集与项目讲法模板。教程本身全部免费公开，这里只是额外的求职资料。</p><span class="cta-key">公众号回复：Agent</span></div><div class="cta-side"><a class="btn btn-primary" href="#/doc/00-start-here">从学习路线开始</a><div style="font-size:12px;color:var(--text-3)">1v1 咨询：微信 offer630</div></div></div>' +
-      '</div>';
+      '</tbody></table></section>';
+    s += ctaBlock();
+    return s + '</div>';
   }
 
-  // ---------- doc ----------
-  function sidebarHtml(active) {
-    var groups = CATS.map(function (c) {
-      var list = docs.filter(function (d) { return d.category === c; });
+  /* ---------- 全部文章页 ---------- */
+  function renderAll() {
+    var s = '<div class="page fade narrow"><div class="crumb"><a href="#/">首页</a><span>/</span><span>全部文章</span></div>';
+    s += '<div class="page-head"><div class="section-kicker">Contents</div><h1>全部文章</h1><p>共 ' + docs.length + ' 篇原创正文，按小白的认知顺序分六个篇章。每篇都有自绘图、可运行代码、自检清单与三句话小结；点标题直接读正文。</p></div>';
+    s += '<div class="all-groups page-groups">' + layers.map(function (l) {
+      var list = docs.filter(function (d) { return d.category === l.key; });
       if (!list.length) return '';
-      return '<div class="side-group"><h4>' + c + '</h4>' + list.map(function (d) {
-        return '<a class="side-link' + (d.slug === active ? ' active' : '') + '" href="#/doc/' + d.slug + '">' + esc(d.title) + '</a>';
-      }).join('') + '</div>';
-    }).join('');
-    return '<aside class="sidebar" id="sidebar">' + groups +
-      '<div class="side-foot">16 篇原创正文 · 一份源同时驱动 GitHub 与本站<br><a href="https://github.com/bimianwangzhe/agent-offer" target="_blank" rel="noopener">在 GitHub 上查看 →</a></div></aside>';
+      return '<div class="all-group"><div class="ag-head"><span class="ag-no">' + l.no + '</span><div><h3>' + esc(l.name) + '</h3><p>' + esc(l.desc) + '</p></div><span class="ag-count">' + list.length + ' 篇</span></div><div class="ag-list">' + list.map(function (d) { return docLine(d, true); }).join('') + '</div></div>';
+    }).join('') + '</div>';
+    s += '<div class="page-foot">另有 <a href="#/index">知识点索引</a>（' + (meta.glossaryCount || 0) + ' 条术语速查）与 <a href="#/roadmap">学习路线</a>。</div>';
+    return s + '</div>';
   }
+
+  /* ---------- 知识点索引页 ---------- */
+  function renderIndex() {
+    var s = '<div class="page fade narrow"><div class="crumb"><a href="#/">首页</a><span>/</span><span>知识点索引</span></div>';
+    s += '<div class="page-head"><div class="section-kicker">Index</div><h1>知识点索引</h1><p>' + (meta.glossaryCount || 0) + ' 条术语速查，按六个篇章分组。每条一句话讲清是什么，点「看正文」跳到对应文章；遇到具体问题时也可以按关键词查。</p></div>';
+    s += '<div class="glossary-tools"><div class="gt-search">' + icon('search') + '<input id="glossaryInput" type="text" placeholder="筛选知识点，例如：幂等 / 注入 / 检索…" autocomplete="off"><span id="glossaryCount" class="gt-count"></span></div></div>';
+    s += '<div id="glossaryBody">' + glossary.map(function (g, gi) {
+      return '<section class="gl-group" data-gi="' + gi + '"><div class="gl-head"><span class="gl-no">' + String(gi + 1).padStart(2, '0') + '</span><h2>' + esc(g.g) + '</h2><span class="gl-count">' + g.items.length + ' 条</span></div><div class="gl-grid">' +
+        g.items.map(function (it) {
+          var d = bySlug[it[2]];
+          return '<div class="gl-item" data-text="' + esc((it[0] + ' ' + it[1] + ' ' + (d ? d.title : '')).toLowerCase()) + '"><h3>' + esc(it[0]) + '</h3><p>' + esc(it[1]) + '</p>' + (d ? '<a href="#/doc/' + it[2] + '">看正文：' + esc(d.title) + ' →</a>' : '') + '</div>';
+        }).join('') + '</div></section>';
+    }).join('') + '</div>';
+    s += '<div id="glossaryEmpty" class="gl-empty" hidden>没有匹配的知识点，换个关键词试试。</div>';
+    s += '<div class="page-foot">索引只做速查，完整推导、图解与代码都在正文里。建议配合 <a href="#/roadmap">学习路线</a> 按顺序读。</div>';
+    return s + '</div>';
+  }
+  function bindGlossary() {
+    var input = document.getElementById('glossaryInput');
+    if (!input) return;
+    var count = document.getElementById('glossaryCount');
+    function run() {
+      var q = input.value.trim().toLowerCase();
+      var shown = 0;
+      document.querySelectorAll('#glossaryBody .gl-item').forEach(function (el) {
+        var hit = !q || (el.getAttribute('data-text') || '').indexOf(q) >= 0;
+        el.hidden = !hit;
+        if (hit) shown++;
+      });
+      document.querySelectorAll('#glossaryBody .gl-group').forEach(function (g) {
+        var any = g.querySelectorAll('.gl-item:not([hidden])').length;
+        g.hidden = any === 0;
+      });
+      if (count) count.textContent = q ? shown + ' 条匹配' : (meta.glossaryCount || 0) + ' 条';
+      var empty = document.getElementById('glossaryEmpty');
+      if (empty) empty.hidden = shown !== 0;
+    }
+    input.addEventListener('input', run);
+    run();
+  }
+
+  /* ---------- 学习路线页 ---------- */
+  function ROADMAP_STEPS() {
+    return [
+      { c: '大模型与调用', pts: ['下一个词预测、Token 与上下文窗口', '一次请求五块、超时与指数退避', '「请只输出 JSON」为什么没用', '语法 / 结构 / 语义三层契约与自动纠正'] },
+      { c: 'Agent 原理', pts: ['唯一判据：下一步谁决定', '什么时候坚决不该用 Agent', '循环状态与四个终止条件', '错误回传、幂等去重、检查点回放'] },
+      { c: '工具与上下文', pts: ['工具是一份契约，不是函数列表', '参数 Schema、权限矩阵、最小权限', '幂等落盘与副作用防重', '上下文预算表与三种压缩策略'] },
+      { c: '检索、记忆与框架', pts: ['切分、双路检索与融合、重排', '溯源校验与拒答阈值', '三层记忆、写入判定与遗忘', '框架六大件与解耦适配层'] },
+      { c: '评测与可靠性', pts: ['三层评测与从 30 条起步的用例集', '性质断言、回归门禁', '间接提示注入与四重预算', '幂等降级、轨迹、灰度与回滚'] },
+      { c: '项目与面试', pts: ['三个项目的约束、权衡与可验证结果', '数字口径与简历改写对照', '面试官追的是决策链不是知识点', '四层追问链与 15 分钟讲项目'] }
+    ];
+  }
+  function renderRoadmap() {
+    var steps = ROADMAP_STEPS();
+    var s = '<div class="page fade narrow"><div class="crumb"><a href="#/">首页</a><span>/</span><span>学习路线</span></div>';
+    s += '<div class="page-head"><div class="section-kicker">Roadmap</div><h1>一条从不会到会的线</h1><p>不是贴标签，而是按依赖关系排知识点：后一层一定要用到前一层。每一条点开都是网站上的完整正文，读完对照自检清单，过了再往下一层。</p></div>';
+    s += '<div class="rm-flow">' + layers.map(function (l, i) {
+      return '<div class="rm-step"><div class="rm-dot">' + l.no + '</div><div class="rm-body"><h3>' + esc(l.name) + '</h3><p>' + esc(l.desc) + '</p></div></div>' + (i < layers.length - 1 ? '<div class="rm-arrow">↓ 有了上一层，才谈得上这一层</div>' : '');
+    }).join('') + '</div>';
+    s += '<section class="section">' + sectionHead('逐层知识点清单', '每一层具体要掌握什么', '逐条点链接读正文；知识点是概括，推导、自绘图与可运行代码全在链接里。');
+    s += layers.map(function (l, i) {
+      var list = docs.filter(function (d) { return d.category === l.key; });
+      return '<div class="rm-layer"><div class="rl-head"><span class="rl-no">' + l.no + '</span><h3>' + esc(l.name) + '</h3><span class="rl-count">' + list.length + ' 篇</span></div><div class="rl-grid"><div class="rl-pts"><h4>要掌握的知识点</h4><ul>' + steps[i].pts.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul></div><div class="rl-docs"><h4>对应正文</h4>' + list.map(function (d) { return '<a href="#/doc/' + d.slug + '"><span>' + d.no + '</span>' + esc(d.title) + '</a>'; }).join('') + '</div></div></div>';
+    }).join('') + '</section>';
+    s += '<div class="page-foot">全部 ' + docs.length + ' 篇见 <a href="#/all">完整目录</a>，术语速查见 <a href="#/index">知识点索引</a>。</div>';
+    return s + ctaBlock() + '</div>';
+  }
+
+  /* ---------- 关于页 ---------- */
+  function renderAbout() {
+    var s = '<div class="page fade narrow"><div class="crumb"><a href="#/">首页</a><span>/</span><span>关于本站</span></div>';
+    s += '<div class="page-head"><div class="section-kicker">About</div><h1>关于本站</h1><p>如果你打开招聘软件搜「Agent 开发」，看到那串要求的第一反应是「完了，我得先把大模型学一遍」——然后收藏一张密密麻麻的名词清单，第二天再打开还是不知道第一步该敲什么：这份指南就是为你写的。</p></div>';
+    s += '<div class="md about-md"><h2>它和名词清单的区别只有一条</h2><p>按小白的认知顺序，把「要掌握的知识点」按依赖关系一层层排好，后一层必须踩在前一层上。每一条知识点后面都有一个链接，点开就是网站上的一篇完整正文：有推导、有自绘图、有可运行代码，不是让你再去别处搜。</p>';
+    s += '<h2>每一篇是怎么写的</h2><p>16 篇图解主线采用同一套讲解结构，目标是让零基础的人真能读下去：</p>';
+    s += '<blockquote><p>开篇一个真实场景提问 → 先破一个常见误解 → 用生活类比讲机制 → 自绘示意图 → 层层追问 → 一段可运行代码并逐行解释 → 踩坑与边界 → 自检清单 → 三句话小结</p></blockquote>';
+    s += '<p>站点会把示意图渲染成 SVG、把要点与自检渲染成讲解卡片。文档源文件是唯一内容源，一份文件同时驱动 GitHub 与网站。</p>';
+    s += '<h2>代码可以真的跑起来</h2><p>文中所有示例只用 Python 标准库，零账号、零联网，复制保存即可运行。想接真实模型服务时，只需改三个环境变量，业务逻辑一行不用改。</p>';
+    s += '<div class="codeblock"><div class="code-head"><span class="code-lang">bash</span><button class="copy-btn" type="button">复制</button></div><pre><code>python check.py    <span class="tok-c"># 环境自检</span>\npython loop.py     <span class="tok-c"># 手写 Agent 循环 + 轨迹回放</span>\npython rag.py      <span class="tok-c"># 检索、重排、溯源、拒答</span>\npython eval.py     <span class="tok-c"># 评测集与回归门禁</span></code></pre></div>';
+    s += '<h2>数字背书</h2><div class="about-stats"><div><b>' + docs.length + ' 篇</b><span>原创长文</span></div><div><b>' + kfmt(meta.totalChars || 0) + '</b><span>字正文</span></div><div><b>' + (meta.totalFigures || 0) + ' 张</b><span>自绘示意图</span></div><div><b>' + (meta.totalCodes || 0) + ' 段</b><span>可运行代码</span></div><div><b>' + (meta.glossaryCount || 0) + ' 条</b><span>知识点速查</span></div><div><b>零依赖</b><span>复制即跑</span></div></div>';
+    s += '<h2>免费且持续更新</h2><p>教程全部免费公开。完整资料包包含按公司 / 岗位分类的笔面情报与网申时间线、主流笔试平台的题型与规则差异、面经追问链合集与项目讲法模板：公众号回复关键词 <strong>Agent</strong> 领取；1v1 笔面辅导与情报咨询走微信 <strong>offer630</strong>，成交走闲鱼担保。</p>';
+    s += '<h2>怎么在本地跑</h2><p>零第三方依赖，不需要安装、不需要联网：</p><div class="codeblock"><div class="code-head"><span class="code-lang">bash</span><button class="copy-btn" type="button">复制</button></div><pre><code>node scripts/build-content.mjs   <span class="tok-c"># 文档 -&gt; 站点数据</span>\nnode site/server.js              <span class="tok-c"># http://127.0.0.1:8899</span></code></pre></div>';
+    s += '</div>';
+    return s + ctaBlock() + '</div>';
+  }
+
+  /* ---------- 文档页 ---------- */
   function renderDoc(d) {
-    var r = renderMarkdown(d.md);
+    var r = renderMarkdown(d.md, d.slug);
     var idx = docs.findIndex(function (x) { return x.slug === d.slug; });
     var prev = docs[idx - 1], next = docs[idx + 1];
+    var layer = layers.filter(function (l) { return l.key === d.category; })[0];
+    var related = docs.filter(function (x) { return x.category === d.category && x.slug !== d.slug; }).slice(0, 4);
     var toc = r.heads.map(function (h) {
       return '<a class="' + (h.lvl === 3 ? 'lvl3' : '') + '" href="#' + h.id + '" data-toc="' + h.id + '">' + esc(h.text) + '</a>';
     }).join('');
-    var pager = '<div class="pager">' +
+
+    var s = '<div class="doc-shell fade"><div class="doc-main">';
+    s += '<div class="crumb"><a href="#/">首页</a><span>/</span><a href="#/roadmap">学习路线</a><span>/</span><span>' + esc(d.category) + '</span><span>/</span><span>' + esc(d.title) + '</span></div>';
+    s += '<div class="doc-meta"><span class="tag">' + esc(d.category) + '</span>' +
+      (d.no === '00' ? '<span class="tag muted">总纲</span>' : '<span class="tag muted">第 ' + (layer ? layer.no : '') + ' 层</span>') +
+      (d.hot ? '<span class="tag hot">热门</span>' : '') +
+      '<span class="meta-plain">' + kfmt(d.chars || 0) + ' 字</span><span class="meta-plain">约 ' + d.minutes + ' 分钟</span><span class="meta-plain">上次更新 ' + esc(d.updated || meta.built) + '</span></div>';
+    s += '<article class="md" id="mdBody"><h1>' + esc(d.title) + '</h1>';
+    if (d.summary) s += '<div class="doc-summary">' + esc(d.summary) + '</div>';
+    s += r.html + '</article>';
+    if (related.length) {
+      s += '<div class="related"><h3>同层相关阅读</h3><div class="related-grid">' + related.map(function (x) {
+        return '<a href="#/doc/' + x.slug + '"><span>' + x.no + '</span><b>' + esc(x.title) + '</b><small>' + esc(x.summary) + '</small></a>';
+      }).join('') + '</div></div>';
+    }
+    s += '<div class="pager">' +
       (prev ? '<a href="#/doc/' + prev.slug + '"><small>← 上一篇</small><span>' + esc(prev.title) + '</span></a>' : '<span></span>') +
       (next ? '<a class="next" href="#/doc/' + next.slug + '"><small>下一篇 →</small><span>' + esc(next.title) + '</span></a>' : '<span></span>') +
       '</div>';
-    return '<div class="doc-shell fade">' + sidebarHtml(d.slug) +
-      '<article class="article"><div class="crumb"><a href="#/">首页</a><span>/</span><span>' + esc(d.category) + '</span><span>/</span><span>' + esc(d.title) + '</span></div>' +
-      '<div class="doc-meta"><span class="tag">' + esc(d.category) + '</span><span class="tag muted">' + (d.minutes || 8) + ' min</span><span class="tag muted">持续更新</span></div>' +
-      '<div class="md" id="mdBody"><h1>' + esc(d.title) + '</h1>' +
-      '<div class="doc-summary">' + esc(d.summary || '') + '</div>' +
-      r.html + '</div>' + pager + '</article>' +
-      '<aside class="toc"><h4>本页目录</h4><div id="tocList">' + (toc || '<span style="font-size:12px;color:var(--text-3)">暂无小节</span>') + '</div>' +
-      '<div class="toc-note">在线站点 <a href="https://agent.meetoffer.cn" target="_blank" rel="noopener">agent.meetoffer.cn</a><br>内容开源 · MIT 协议</div></aside></div>';
+    s += '<div class="edit-line"><span>发现写错了？欢迎提 Issue 或 PR。</span><a href="' + (meta.repo || '#/') + '/blob/main/docs/' + d.slug + '.md" target="_blank" rel="noopener">在 GitHub 上编辑此页 →</a></div>';
+    s += '</div>';
+    s += '<aside class="toc"><div class="toc-inner"><h4>本页目录</h4><div id="tocList">' + (toc || '<span class="toc-empty">暂无小节</span>') + '</div>' +
+      '<div class="toc-note">' + (d.sections || []).length + ' 个小节 · ' + (d.figures || 0) + ' 张图 · ' + (d.codes || 0) + ' 段代码</div></div></aside>';
+    return s + '</div>';
   }
 
-  // ---------- router ----------
+  /* ---------- router ---------- */
+  var current = { nav: 'home', slug: null, hash: '' };
   function route() {
     var hash = location.hash || '#/';
     var m = /^#\/doc\/([\w-]+)$/.exec(hash);
     var d = m && bySlug[m[1]];
-    if (d) {
-      app.innerHTML = renderDoc(d);
-      document.title = d.title + ' · AgentOffer';
-      bindDoc(d);
-      window.scrollTo(0, 0);
-    } else {
-      app.innerHTML = renderHome();
-      document.title = 'AgentOffer · Agent 开发岗上岸指南';
-    }
-    var NAV_SLUG = { roadmap: '00-start-here', loop: '05-agent-loop',
-                     context: '06-tool-calling', career: '14-projects' };
+    var nav = 'home';
+    if (/^#\/roadmap/.test(hash)) nav = 'roadmap';
+    else if (/^#\/all/.test(hash)) nav = 'all';
+    else if (/^#\/index/.test(hash)) nav = 'index';
+    else if (/^#\/about/.test(hash)) nav = 'about';
+    else if (d && d.slug === '16-interview-qa') nav = 'interview';
+    else if (d) nav = 'doc';
+
+    if (d) { app.innerHTML = renderDoc(d); document.title = d.title + ' · AgentOffer'; bindDoc(); }
+    else if (nav === 'all') { app.innerHTML = renderAll(); document.title = '全部文章 · AgentOffer'; }
+    else if (nav === 'index') { app.innerHTML = renderIndex(); document.title = '知识点索引 · AgentOffer'; bindGlossary(); }
+    else if (nav === 'roadmap') { app.innerHTML = renderRoadmap(); document.title = '学习路线 · AgentOffer'; }
+    else if (nav === 'about') { app.innerHTML = renderAbout(); document.title = '关于本站 · AgentOffer'; bindCodeCopy(); }
+    else { app.innerHTML = renderHome(); document.title = 'AgentOffer · Agent 开发岗上岸指南'; }
+
+    sidebar.innerHTML = sidebarHtml(d ? d.slug : null, nav);
+    bindSidebar();
     document.querySelectorAll('.nav a').forEach(function (a) {
-      var key = a.getAttribute('data-nav');
-      a.classList.toggle('active', key === 'home' ? !d : (d && d.slug === NAV_SLUG[key]));
+      a.classList.toggle('active', a.getAttribute('data-nav') === nav);
     });
+    current = { nav: nav, slug: d ? d.slug : null, hash: hash };
+    closeMobileSidebar();
+    window.scrollTo(0, 0);
     updateProgress();
   }
-  function bindDoc(d) {
+  function bindCodeCopy() {
     document.querySelectorAll('.copy-btn').forEach(function (b) {
+      if (b.dataset.bound) return;
+      b.dataset.bound = '1';
       b.addEventListener('click', function () {
         var code = b.closest('.codeblock').querySelector('code').innerText;
         if (navigator.clipboard) navigator.clipboard.writeText(code);
@@ -374,17 +574,19 @@
         setTimeout(function () { b.textContent = '复制'; b.classList.remove('ok'); }, 1600);
       });
     });
-    // toc click -> scroll to heading (hash is used for router, so handle manually)
-    document.querySelectorAll('#tocList a').forEach(function (a) {
+  }
+  function bindDoc() {
+    bindCodeCopy();
+    document.querySelectorAll('#tocList a, .h-anchor').forEach(function (a) {
       a.addEventListener('click', function (e) {
         e.preventDefault();
-        var el = document.getElementById(a.getAttribute('data-toc'));
+        var el = document.getElementById(a.getAttribute('data-toc') || a.getAttribute('data-anchor'));
         if (el) { window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 84, behavior: 'smooth' }); }
       });
     });
   }
 
-  // ---------- search ----------
+  /* ---------- 搜索：全文 + 小节 + 知识点 ---------- */
   var modal = document.getElementById('searchModal');
   var input = document.getElementById('searchInput');
   var results = document.getElementById('searchResults');
@@ -398,25 +600,38 @@
   function doSearch(q) {
     q = q.trim();
     if (!q) {
-      hits = docs.slice(0, 8).map(function (d) { return { d: d, snip: d.summary }; });
+      hits = docs.slice(0, 8).map(function (d) { return { label: d.title, cat: d.category, snip: d.summary, url: '#/doc/' + d.slug }; });
     } else {
       var ql = q.toLowerCase();
       hits = [];
-      docs.forEach(function (d) {
-        var body = d.md || '';
-        var pos = body.toLowerCase().indexOf(ql);
-        var titleHit = d.title.toLowerCase().indexOf(ql) >= 0 || (d.summary || '').toLowerCase().indexOf(ql) >= 0;
-        if (pos < 0 && !titleHit) return;
-        var snip = titleHit ? d.summary : body.slice(Math.max(0, pos - 40), pos + 90).replace(/\n/g, ' ').replace(/[#*`>|]/g, '');
-        hits.push({ d: d, snip: snip, score: titleHit ? 0 : 1 });
+      // 知识点词条
+      glossary.forEach(function (g) {
+        g.items.forEach(function (it) {
+          if ((it[0] + ' ' + it[1]).toLowerCase().indexOf(ql) >= 0) {
+            hits.push({ label: it[0], cat: '知识点 · ' + g.g, snip: it[1], url: '#/doc/' + it[2], score: 0 });
+          }
+        });
       });
-      hits.sort(function (a, b) { return a.score - b.score || a.d.order - b.d.order; });
-      hits = hits.slice(0, 12);
+      // 文章与小节
+      docs.forEach(function (d) {
+        var pos = (d.md || '').toLowerCase().indexOf(ql);
+        var titleHit = d.title.toLowerCase().indexOf(ql) >= 0 || (d.summary || '').toLowerCase().indexOf(ql) >= 0;
+        (d.sections || []).forEach(function (h) {
+          if (h.text.toLowerCase().indexOf(ql) >= 0) {
+            hits.push({ label: h.text, cat: '小节 · ' + d.title, snip: d.summary, url: '#/doc/' + d.slug, score: 1 });
+          }
+        });
+        if (pos < 0 && !titleHit) return;
+        var snip = titleHit ? d.summary : d.md.slice(Math.max(0, pos - 40), pos + 90).replace(/\n/g, ' ').replace(/[#*`>|]/g, '');
+        hits.push({ label: d.title, cat: d.category, snip: snip, url: '#/doc/' + d.slug, score: titleHit ? 1 : 2 });
+      });
+      hits.sort(function (a, b) { return a.score - b.score; });
+      hits = hits.slice(0, 14);
     }
     sel = 0;
     if (!hits.length) { results.innerHTML = '<div class="sr-empty">没有找到相关内容，换个关键词试试</div>'; return; }
     results.innerHTML = hits.map(function (h, i) {
-      return '<a class="sr-item' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '" href="#/doc/' + h.d.slug + '"><b>' + esc(h.d.category) + ' · ' + mark(h.d.title, q) + '</b><span>' + mark(h.snip || '', q) + '</span></a>';
+      return '<a class="sr-item' + (i === 0 ? ' sel' : '') + '" data-i="' + i + '" href="' + h.url + '"><b>' + esc(h.cat) + ' · ' + mark(h.label, q) + '</b><span>' + mark(h.snip || '', q) + '</span></a>';
     }).join('');
   }
   function openSearch() { modal.hidden = false; input.value = ''; doSearch(''); setTimeout(function () { input.focus(); }, 30); }
@@ -424,10 +639,7 @@
   document.getElementById('searchOpen').addEventListener('click', openSearch);
   modal.querySelector('[data-close]').addEventListener('click', closeSearch);
   input.addEventListener('input', function () { doSearch(input.value); });
-  results.addEventListener('click', function (e) {
-    var a = e.target.closest('.sr-item');
-    if (a) closeSearch();
-  });
+  results.addEventListener('click', function (e) { if (e.target.closest('.sr-item')) closeSearch(); });
   function moveSel(step) {
     if (!hits.length) return;
     sel = (sel + step + hits.length) % hits.length;
@@ -441,11 +653,11 @@
       if (e.key === 'Escape') { closeSearch(); return; }
       if (e.key === 'ArrowDown') { e.preventDefault(); moveSel(1); return; }
       if (e.key === 'ArrowUp') { e.preventDefault(); moveSel(-1); return; }
-      if (e.key === 'Enter' && hits[sel]) { location.hash = '#/doc/' + hits[sel].d.slug; closeSearch(); return; }
+      if (e.key === 'Enter' && hits[sel]) { location.hash = hits[sel].url; closeSearch(); return; }
     }
   });
 
-  // ---------- theme ----------
+  /* ---------- 主题 ---------- */
   var themeBtn = document.getElementById('themeToggle');
   function setTheme(t) {
     document.documentElement.setAttribute('data-theme', t);
@@ -461,7 +673,7 @@
     setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   });
 
-  // ---------- progress / totop / menu / toc scrollspy ----------
+  /* ---------- 进度 / 回顶 / 抽屉 / TOC 高亮 ---------- */
   function updateProgress() {
     var h = document.documentElement.scrollHeight - window.innerHeight;
     var pct = h > 0 ? Math.min(100, (window.scrollY / h) * 100) : 0;
@@ -479,15 +691,17 @@
   }
   window.addEventListener('scroll', updateProgress, { passive: true });
   document.getElementById('toTop').addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  function closeMobileSidebar() {
+    sidebar.classList.remove('open');
+    document.getElementById('mobileMask').classList.remove('show');
+  }
   document.getElementById('menuToggle').addEventListener('click', function () {
-    var s = document.getElementById('sidebar');
-    if (s) s.classList.toggle('open');
+    sidebar.classList.toggle('open');
+    document.getElementById('mobileMask').classList.toggle('show', sidebar.classList.contains('open'));
   });
+  document.getElementById('mobileMask').addEventListener('click', closeMobileSidebar);
   document.addEventListener('click', function (e) {
-    if (e.target.closest('#sidebar .side-link')) {
-      var s = document.getElementById('sidebar');
-      if (s) s.classList.remove('open');
-    }
+    if (e.target.closest('#sidebar a')) closeMobileSidebar();
   });
   window.addEventListener('hashchange', route);
   route();
