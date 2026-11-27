@@ -493,14 +493,25 @@
 
   /* ---------- 学习路线页 ---------- */
   function ROADMAP_STEPS() {
-    return [
-      { c: '大模型与调用', pts: ['下一个词预测、Token 与上下文窗口', '一次请求五块、超时与指数退避', '「请只输出 JSON」为什么没用', '语法 / 结构 / 语义三层契约与自动纠正'] },
-      { c: 'Agent 原理', pts: ['唯一判据：下一步谁决定', '什么时候坚决不该用 Agent', '循环状态与四个终止条件', '错误回传、幂等去重、检查点回放'] },
-      { c: '工具与上下文', pts: ['工具是一份契约，不是函数列表', '参数 Schema、权限矩阵、最小权限', '幂等落盘与副作用防重', '上下文预算表与三种压缩策略'] },
-      { c: '检索、记忆与框架', pts: ['切分、双路检索与融合、重排', '溯源校验与拒答阈值', '三层记忆、写入判定与遗忘', '框架六大件与解耦适配层'] },
-      { c: '评测与可靠性', pts: ['三层评测与从 30 条起步的用例集', '性质断言、回归门禁', '间接提示注入与四重预算', '幂等降级、轨迹、灰度与回滚'] },
-      { c: '项目与面试', pts: ['三个项目的约束、权衡与可验证结果', '数字口径与简历改写对照', '面试官追的是决策链不是知识点', '四层追问链与 15 分钟讲项目'] }
-    ];
+    /* 要点跟着 layers 走：篇章从 6 组扩到 12 组后，写死的数组会越界，
+       所以这里按篇章实时生成，总纲给路线说明，其余层取术语速查里同名的一组。 */
+    return layers.map(function (l, i) {
+      if (i === 0) {
+        return { c: l.name, pts: [
+          '先把整条路线走一遍：一共有哪些知识点、为什么按这个顺序排',
+          '每一条都能点开一篇完整正文，不是只给名词清单',
+          '后一层要用到前一层，读完自检清单过了再往下走',
+          '正文里配自绘图、可运行代码与踩坑边界，边读边跑'
+        ] };
+      }
+      var group = null;
+      for (var j = 0; j < glossary.length; j++) {
+        if (glossary[j].g === l.key) { group = glossary[j]; break; }
+      }
+      if (!group) group = glossary[i - 1];
+      var items = group ? group.items : [];
+      return { c: l.name, pts: items.slice(0, 6).map(function (it) { return [it[0] || '', it[1] || '', it[2] || '']; }) };
+    });
   }
   function renderRoadmap() {
     var steps = ROADMAP_STEPS();
@@ -512,7 +523,14 @@
     s += '<section class="section">' + sectionHead('逐层知识点清单', '每一层具体要掌握什么', '逐条点链接读正文；知识点是概括，推导、自绘图与可运行代码全在链接里。');
     s += layers.map(function (l, i) {
       var list = docs.filter(function (d) { return d.category === l.key; });
-      return '<div class="rm-layer"><div class="rl-head"><span class="rl-no">' + l.no + '</span><h3>' + esc(l.name) + '</h3><span class="rl-count">' + list.length + ' 篇</span></div><div class="rl-grid"><div class="rl-pts"><h4>要掌握的知识点</h4><ul>' + steps[i].pts.map(function (p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul></div><div class="rl-docs"><h4>对应正文</h4>' + list.map(function (d) { return '<a href="#/doc/' + d.slug + '"><span>' + d.no + '</span>' + esc(d.title) + '</a>'; }).join('') + '</div></div></div>';
+      var step = steps[i] || { c: l.name, pts: [] };
+      var ptsHtml = (step.pts || []).map(function (p) {
+        if (typeof p === 'string') return '<li>' + esc(p) + '</li>';
+        var t = p[0] || '', desc = p[1] || '', sl = p[2] || '';
+        var label = (sl && bySlug[sl]) ? '<a href="#/doc/' + sl + '">' + esc(t) + '</a>' : '<b>' + esc(t) + '</b>';
+        return '<li>' + label + (desc ? '<span class="rl-desc">' + esc(desc) + '</span>' : '') + '</li>';
+      }).join('');
+      return '<div class="rm-layer"><div class="rl-head"><span class="rl-no">' + l.no + '</span><h3>' + esc(l.name) + '</h3><span class="rl-count">' + list.length + ' 篇</span></div><div class="rl-grid"><div class="rl-pts"><h4>要掌握的知识点</h4><ul>' + ptsHtml + '</ul></div><div class="rl-docs"><h4>对应正文</h4>' + list.map(function (d) { return '<a href="#/doc/' + d.slug + '"><span>' + d.no + '</span>' + esc(d.title) + '</a>'; }).join('') + '</div></div></div>';
     }).join('') + '</section>';
     s += '<div class="page-foot">全部 ' + docs.length + ' 篇见 <a href="#/all">完整目录</a>，术语速查见 <a href="#/index">知识点索引</a>。</div>';
     return s + ctaBlock() + '</div>';
@@ -587,12 +605,28 @@
     else if (d && d.slug === '16-interview-qa') nav = 'interview';
     else if (d) nav = 'doc';
 
-    if (d) { app.innerHTML = renderDoc(d); document.title = d.title + ' · AgentOffer'; bindDoc(); }
-    else if (nav === 'all') { app.innerHTML = renderAll(); document.title = '全部文章 · AgentOffer'; }
-    else if (nav === 'index') { app.innerHTML = renderIndex(); document.title = '知识点索引 · AgentOffer'; bindGlossary(); }
-    else if (nav === 'roadmap') { app.innerHTML = renderRoadmap(); document.title = '学习路线 · AgentOffer'; }
-    else if (nav === 'about') { app.innerHTML = renderAbout(); document.title = '关于本站 · AgentOffer'; bindCodeCopy(); }
-    else { app.innerHTML = renderHome(); document.title = 'AgentOffer · Agent 开发岗上岸指南'; }
+    var html = '', bind = '';
+    try {
+      if (d) { html = renderDoc(d); document.title = d.title + ' · AgentOffer'; bind = 'doc'; }
+      else if (nav === 'all') { html = renderAll(); document.title = '全部文章 · AgentOffer'; }
+      else if (nav === 'index') { html = renderIndex(); document.title = '知识点索引 · AgentOffer'; bind = 'glossary'; }
+      else if (nav === 'roadmap') { html = renderRoadmap(); document.title = '学习路线 · AgentOffer'; }
+      else if (nav === 'about') { html = renderAbout(); document.title = '关于本站 · AgentOffer'; bind = 'copy'; }
+      else { html = renderHome(); document.title = 'AgentOffer · Agent 开发岗上岸指南'; }
+    } catch (err) {
+      console.error('[AgentOffer] 页面渲染失败', err);
+      document.title = '页面加载异常 · AgentOffer';
+      bind = '';
+      html = '<div class="page fade narrow"><div class="crumb"><a href="#/">首页</a><span>/</span><span>页面加载异常</span></div>' +
+        '<div class="page-head"><div class="section-kicker">Notice</div><h1>这一页暂时没加载出来</h1>' +
+        '<p>别急，内容还在。可以先回首页，或用上面的导航进「全部文章」「知识点索引」继续读。</p></div>' +
+        '<p><a class="btn btn-primary" href="#/">回到首页</a></p>' +
+        '<pre class="render-err">' + esc(String((err && err.message) || err)) + '</pre></div>';
+    }
+    app.innerHTML = html;
+    if (bind === 'doc') bindDoc();
+    else if (bind === 'glossary') bindGlossary();
+    else if (bind === 'copy') bindCodeCopy();
 
     sidebar.innerHTML = sidebarHtml(d ? d.slug : null, nav);
     bindSidebar();

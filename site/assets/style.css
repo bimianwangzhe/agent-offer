@@ -260,6 +260,9 @@ html[data-theme="dark"] .rl-no{color:#08201c}
 .rl-pts ul{margin:0;padding-left:19px}
 .rl-pts li{font-size:13px;color:var(--text-2);margin:7px 0;line-height:1.7}
 .rl-pts li::marker{color:var(--accent)}
+.rl-pts li a{color:var(--accent-strong);font-weight:650}
+.rl-pts li .rl-desc{display:block;font-size:12px;color:var(--text-3);line-height:1.6;margin-top:1px}
+.render-err{margin-top:18px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-2);color:var(--text-3);font-size:12px;white-space:pre-wrap;font-family:var(--mono)}
 .rl-docs a{display:flex;gap:9px;align-items:baseline;font-size:13px;color:var(--text-2);padding:7px 0;border-bottom:1px dashed var(--border)}
 .rl-docs a:last-child{border-bottom:0}
 .rl-docs a:hover{color:var(--accent-strong);text-decoration:none}
